@@ -9,26 +9,37 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DOCS_DIR = os.path.join(BASE_DIR, "documentos_oficiales")
 PORT = int(os.environ.get("PORT", 8080))
 
-from asesor_gemini_puro import responder_consulta
+import threading
+
+from asesor_gemini_puro import es_comando_reinicio, responder_consulta
 from whatsapp_adapter import register_whatsapp_routes
 
 app = Flask(__name__, static_folder=None)
 register_whatsapp_routes(app)
 
-# Rate limiting ligero por IP (25 peticiones por minuto por IP)
+# Rate limiting segmentado por sesión + IP (permite redes NAT/campus compartidas sin bloquear estudiantes)
+SESSION_RATE_LIMITS = {}
 IP_RATE_LIMITS = {}
-MAX_REQUESTS_PER_MINUTE = 25
+RATE_LOCK = threading.Lock()
+MAX_SESSION_REQUESTS_PER_MINUTE = 30
+MAX_IP_REQUESTS_PER_MINUTE = 120
 
-def is_rate_limited(ip):
+
+def is_rate_limited(ip, session_id):
     now = time.time()
-    timestamps = IP_RATE_LIMITS.get(ip, [])
-    timestamps = [t for t in timestamps if now - t < 60]
-    if len(timestamps) >= MAX_REQUESTS_PER_MINUTE:
-        IP_RATE_LIMITS[ip] = timestamps
-        return True
-    timestamps.append(now)
-    IP_RATE_LIMITS[ip] = timestamps
-    return False
+    with RATE_LOCK:
+        s_key = f"{ip}:{session_id}"
+        s_ts = [t for t in SESSION_RATE_LIMITS.get(s_key, []) if now - t < 60]
+        ip_ts = [t for t in IP_RATE_LIMITS.get(ip, []) if now - t < 60]
+        if len(s_ts) >= MAX_SESSION_REQUESTS_PER_MINUTE or len(ip_ts) >= MAX_IP_REQUESTS_PER_MINUTE:
+            SESSION_RATE_LIMITS[s_key] = s_ts
+            IP_RATE_LIMITS[ip] = ip_ts
+            return True
+        s_ts.append(now)
+        ip_ts.append(now)
+        SESSION_RATE_LIMITS[s_key] = s_ts
+        IP_RATE_LIMITS[ip] = ip_ts
+        return False
 
 @app.after_request
 def add_cors_headers(response):
@@ -47,6 +58,17 @@ def home():
         return Response(html, mimetype="text/html; charset=utf-8")
     return Response("<h1>Portal Académico Ikiam</h1>", mimetype="text/html; charset=utf-8")
 
+
+@app.route("/admisiones", methods=["GET"])
+@app.route("/admisiones/", methods=["GET"])
+def home_admisiones():
+    adm_path = os.path.join(BASE_DIR, "admisiones.html")
+    if os.path.exists(adm_path):
+        with open(adm_path, "r", encoding="utf-8") as f:
+            html = f.read()
+        return Response(html, mimetype="text/html; charset=utf-8")
+    return Response("<h1>Portal Admisiones Ikiam</h1>", mimetype="text/html; charset=utf-8")
+
 @app.route("/healthz", methods=["GET"])
 def health():
     return jsonify({
@@ -60,26 +82,32 @@ def chat():
     if request.method == "OPTIONS":
         return Response("", status=200)
 
+    data = request.get_json(silent=True) or {}
+    msg = str(data.get("message", "")).strip()
+    session_id = str(data.get("sessionId", "web_default_session")).strip()
+    scope_raw = str(data.get("scope", "academico")).strip().lower()
+    scope = "admisiones" if scope_raw in ("admisiones", "admision") else "academico"
+
     client_ip = request.headers.get("X-Forwarded-For", request.remote_addr or "unknown").split(",")[0].strip()
-    if is_rate_limited(client_ip):
+    if is_rate_limited(client_ip, session_id):
         return jsonify({
-            "reply": "Ha alcanzado el límite temporal de consultas por minuto. Por favor espere un momento antes de enviar otra consulta."
+            "reply": "Ha alcanzado el límite temporal de consultas por minuto. Por favor espere un momento antes de enviar otra consulta.",
+            "reset": False,
         }), 200
 
-    data = request.get_json(silent=True) or {}
-    msg = data.get("message", "").strip()
-    session_id = data.get("sessionId", "web_default_session").strip()
-
     if not msg:
-        return jsonify({"reply": "Por favor formule su pregunta sobre trámites académicos de Ikiam."}), 200
+        prompt_vacio = "Por favor formule su consulta sobre el proceso de admisión a Ikiam." if scope == "admisiones" else "Por favor formule su pregunta sobre trámites académicos de Ikiam."
+        return jsonify({"reply": prompt_vacio, "reset": False}), 200
 
     try:
-        reply = responder_consulta(session_id, msg)
-        return jsonify({"reply": reply}), 200
+        fue_reset = es_comando_reinicio(msg)
+        reply = responder_consulta(session_id, msg, scope=scope)
+        return jsonify({"reply": reply, "reset": fue_reset, "scope": scope}), 200
     except Exception as e:
-        app.logger.error(f"Error procesando chat: {e}")
+        app.logger.error(f"Error procesando chat ({scope}): {e}")
         return jsonify({
-            "reply": "Estimado/a estudiante, ocurrió un inconveniente temporal al conectar con el asesor. Por favor intente nuevamente en breves momentos."
+            "reply": "Estimado/a estudiante, ocurrió un inconveniente temporal al conectar con el asesor. Por favor intente nuevamente en breves momentos.",
+            "reset": False,
         }), 200
 
 @app.route("/documentos/<path:filename>", methods=["GET"])

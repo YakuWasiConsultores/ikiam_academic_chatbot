@@ -41,6 +41,26 @@ class UserCognitiveMemory:
             pass
         self.datos = self._cargar()
 
+    def _datos_iniciales(self) -> Dict[str, Any]:
+        return {
+            "version": "2.1-conciencia",
+            "user_id": self.user_id,
+            "creado_en": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "perfil_estudiante": {
+                "carrera": "No especificada aún",
+                "semestre": "No especificado",
+                "situacion_especial": "Ninguna reportada",
+                "estado_academico": "Regular",
+            },
+            "hechos_aprendidos": {},
+            "monologo_interno": (
+                "Iniciando atención personalizada para este estudiante. "
+                "Analizaré sus problemas de fondo sin dar respuestas prefabricadas."
+            ),
+            "ultima_opciones_flujo": [],
+            "historial_episodico": [],
+        }
+
     def _cargar(self) -> Dict[str, Any]:
         with self.lock:
             if os.path.exists(self.file_path):
@@ -51,24 +71,7 @@ class UserCognitiveMemory:
                             return data
                 except Exception:
                     pass
-            return {
-                "version": "2.1-conciencia",
-                "user_id": self.user_id,
-                "creado_en": time.strftime("%Y-%m-%d %H:%M:%S"),
-                "perfil_estudiante": {
-                    "carrera": "No especificada aún",
-                    "semestre": "No especificado",
-                    "situacion_especial": "Ninguna reportada",
-                    "estado_academico": "Regular",
-                },
-                "hechos_aprendidos": {},
-                "monologo_interno": (
-                    "Iniciando atención personalizada para este estudiante. "
-                    "Analizaré sus problemas de fondo sin dar respuestas prefabricadas."
-                ),
-                "ultima_opciones_flujo": [],
-                "historial_episodico": [],
-            }
+            return self._datos_iniciales()
 
     def _guardar(self):
         with self.lock:
@@ -143,6 +146,16 @@ class UserCognitiveMemory:
             if self.datos.get("ultima_opciones_flujo"):
                 self.datos["ultima_opciones_flujo"] = []
                 self._guardar()
+
+    def reiniciar_memoria(self):
+        """Borra el archivo persistido y restablece el perfil/episodios para nueva conversación."""
+        with self.lock:
+            self.datos = self._datos_iniciales()
+            if os.path.exists(self.file_path):
+                try:
+                    os.remove(self.file_path)
+                except OSError:
+                    pass
 
     def registrar_episodio(self, pregunta: str, respuesta: str):
         with self.lock:
