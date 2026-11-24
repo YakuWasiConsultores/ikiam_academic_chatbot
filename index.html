@@ -2035,20 +2035,34 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
     justify-content: center;
   }
   .chip-btn {
-    background: #eef7f2;
+    background: #ffffff;
     border: 1px solid #b7dec9;
     color: #0d5f3a;
-    padding: 4px 8px;
-    border-radius: 4px;
+    padding: 5px 11px;
+    border-radius: 14px;
     font-size: 11px;
     font-weight: 600;
     cursor: pointer;
-    margin: 2px;
+    margin: 2px 1px;
     display: inline-block;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 2px rgba(13, 95, 58, 0.06);
   }
   .chip-btn:hover {
     background: #0d5f3a;
-    color: white;
+    border-color: #0d5f3a;
+    color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(13, 95, 58, 0.2);
+  }
+  .btn-opcion-guia {
+    transition: all 0.2s ease;
+  }
+  .btn-opcion-guia:hover {
+    background-color: #f0fdf4 !important;
+    border-color: #0d5f3a !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(13, 95, 58, 0.14);
   }
   .btn-opcion-guia:hover {
     background-color: #f0fdf4 !important;
@@ -2088,21 +2102,27 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
     </div>
   </div>
   <div id="widget-academico-msgs">
-    <div class="msg-item msg-bot">
-      <strong>Bienvenido/a a la Red de Asistencia Académica de Ikiam.</strong><br>
-      <span style="font-size:11.5px; color:#334155;">Para dirigirle a la Facultad, formato oficial (.docx) y correo institucional exacto, seleccione una ruta o formule su consulta:</span>
-      <div style="margin-top: 7px; display:flex; flex-wrap:wrap; gap:4px;">
-        <span class="chip-btn" onclick="seleccionarOpcionCaso('flujo:flujo_ingreso', 'Ingreso a Ikiam')">Ingreso a Ikiam</span>
-        <span class="chip-btn" onclick="seleccionarOpcionCaso('selector:facultades', 'Facultades y Carreras')">Facultades y Carreras</span>
-        <span class="chip-btn" onclick="seleccionarOpcionCaso('flujo:flujo_cambio_carrera', 'Cambio / Homologación')">Cambio / Homologación</span>
-        <span class="chip-btn" onclick="seleccionarOpcionCaso('flujo:flujo_faltas', 'Faltas y Asistencia')">Faltas y Asistencia</span>
-        <span class="chip-btn" onclick="seleccionarOpcionCaso('flujo:flujo_retiro', 'Retiro de Asignatura')">Retiro de Asignatura</span>
-        <span class="chip-btn" onclick="seleccionarOpcionCaso('flujo:flujo_practicas', 'Prácticas Preprofesionales')">Prácticas DVS</span>
-        <span class="chip-btn" onclick="seleccionarOpcionCaso('flujo:flujo_becas', 'Becas y Ayudas')">Becas y Ayudas</span>
-        <span class="chip-btn" onclick="seleccionarOpcionCaso('flujo:flujo_titulacion_idiomas', 'Titulación e Idiomas')">Titulación e Idiomas</span>
+    <div class="msg-item msg-bot" style="border-left: 3px solid #0d5f3a; padding: 10px 12px;">
+      <div style="display:inline-flex; align-items:center; gap:5px; background:#eef7f2; color:#0d5f3a; font-weight:700; font-size:10.5px; padding:2px 8px; border-radius:10px; margin-bottom:6px;">
+        <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#22c55e;"></span>
+        Dirección Académica Ikiam
+      </div>
+      <p style="font-size:12px; margin:0 0 5px; color:#1e293b; line-height:1.45;">
+        <strong>¡Hola! Qué gusto saludarte.</strong> Te damos la bienvenida a la Dirección Académica. Te guiamos en tus trámites universitarios, normativa y contactos oficiales sin complicaciones.
+      </p>
+      <p style="font-size:11.5px; color:#64748b; margin:0 0 8px;">
+        Escribe tu consulta o selecciona un trámite frecuente:
+      </p>
+      <div style="display:flex; flex-wrap:wrap; gap:5px;">
+        <span class="chip-btn" onclick="seleccionarOpcionCaso('flujo:flujo_retiro', 'Retiro de asignatura')">Retiros y matrícula</span>
+        <span class="chip-btn" onclick="seleccionarOpcionCaso('flujo:flujo_faltas', 'Justificar inasistencias')">Justificar faltas</span>
+        <span class="chip-btn" onclick="seleccionarOpcionCaso('flujo:flujo_practicas', 'Prácticas preprofesionales')">Prácticas preprofesionales</span>
+        <span class="chip-btn" onclick="seleccionarOpcionCaso('flujo:flujo_cambio_carrera', 'Cambio de carrera')">Cambio de carrera</span>
+        <span class="chip-btn" onclick="seleccionarOpcionCaso('flujo:flujo_becas', 'Becas y bienestar')">Becas y bienestar</span>
+        <span class="chip-btn" onclick="seleccionarOpcionCaso('selector:facultades', 'Directorio de Facultades')">Directorio por Facultad</span>
       </div>
     </div>
-  </div>
+  </div>>
   <div id="widget-academico-inputarea">
     <input type="text" id="widget-academico-input" placeholder="Consulte sobre un trámite académico..." onkeypress="if(event.key==='Enter') enviarConsultaAcademica()">
     <button id="widget-academico-send" onclick="enviarConsultaAcademica()">

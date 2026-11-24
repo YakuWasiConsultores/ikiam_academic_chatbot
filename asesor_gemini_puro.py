@@ -94,9 +94,9 @@ LEMAS_EXPANSION = {
 }
 
 BTN_STYLE = (
-    "text-align:left; background:#ffffff; border:1px solid #cbd5e1; border-left:3px solid #0d5f3a; color:#0d5f3a; "
-    "padding:7px 11px; border-radius:6px; cursor:pointer; font-weight:600; "
-    "font-size:12px; line-height:1.35; transition:all 0.2s; width:100%;"
+    "text-align:left; background:#ffffff; border:1px solid #b7dec9; border-left:3px solid #0d5f3a; color:#0d5f3a; "
+    "padding:7px 10px; border-radius:6px; cursor:pointer; font-weight:600; "
+    "font-size:12px; line-height:1.35; transition:all 0.2s; width:100%; box-sizing:border-box;"
 )
 
 
@@ -433,14 +433,24 @@ def render_flujo_por_id(flow_id: str) -> str:
         return None
     saludo, msg_orientador, opciones_json = row
     opciones = json.loads(opciones_json)
-    botones_html = "<div class='opciones-guiadas-grid' style='display:flex; flex-direction:column; gap:6px; margin:8px 0;'>"
-    for opc in opciones:
-        botones_html += render_boton_accion(opc.get("codigo_caso", ""), opc.get("etiqueta", ""), opc.get("descripcion", ""))
-    botones_html += "</div>"
-    return f"""<p style='font-size:12px; margin:0 0 5px;'><strong>{saludo}</strong></p>
-<p style='font-size:12px; margin:0 0 6px;'>{msg_orientador}</p>
-{botones_html}
-<p style='font-size:11px; color:#6b7280; font-style:italic; margin:4px 0 0;'>Seleccione la opción correspondiente para visualizar el formato oficial, requisitos y correos institucionales.</p>"""
+    if flow_id == "flujo_saludo_inicio":
+        botones_html = "<div class='opciones-guiadas-grid' style='display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:8px 0;'>"
+        for opc in opciones:
+            botones_html += render_boton_accion(opc.get("codigo_caso", ""), opc.get("etiqueta", ""))
+        botones_html += "</div>"
+        badge = "<div style='display:inline-flex; align-items:center; gap:5px; background:#eef7f2; color:#0d5f3a; font-weight:700; font-size:10.5px; padding:2px 8px; border-radius:10px; margin-bottom:6px;'><span style='display:inline-block; width:6px; height:6px; border-radius:50%; background:#22c55e;'></span>Dirección Académica Ikiam</div>"
+        return f"""{badge}
+<p style='font-size:12px; margin:0 0 5px; color:#1e293b; line-height:1.45;'><strong>{saludo}</strong></p>
+<p style='font-size:11.5px; color:#64748b; margin:0 0 4px;'>{msg_orientador}</p>
+{botones_html}"""
+    else:
+        botones_html = "<div class='opciones-guiadas-grid' style='display:flex; flex-direction:column; gap:6px; margin:8px 0;'>"
+        for opc in opciones:
+            botones_html += render_boton_accion(opc.get("codigo_caso", ""), opc.get("etiqueta", ""), opc.get("descripcion", ""))
+        botones_html += "</div>"
+        return f"""<p style='font-size:12px; margin:0 0 5px;'><strong>{saludo}</strong></p>
+<p style='font-size:11.5px; color:#475569; margin:0 0 6px;'>{msg_orientador}</p>
+{botones_html}"""
 
 
 def es_pregunta_compleja_o_puntual(p_low: str) -> bool:
@@ -764,28 +774,28 @@ def _llamar_gemini(system_instruction_text: str, user_content_text: str):
 
 
 def _render_menu_admisiones(aviso_reset: str = "") -> str:
-    conn = connect_ro(DB_ADMISIONES)
-    rows = []
-    if conn:
-        try:
-            rows = conn.execute(
-                "SELECT slug, boton_etiqueta, boton_descripcion FROM admisiones_faq WHERE es_menu_principal = 1 ORDER BY frecuencia DESC, id ASC"
-            ).fetchall()
-        finally:
-            conn.close()
-    btns = "<div class='opciones-guiadas-grid' style='display:flex; flex-direction:column; gap:6px; margin:8px 0;'>"
-    for slug, etq, desc in rows:
-        btns += render_boton_accion(f"admfaq:{slug}", etq, desc)
-    btns += render_boton_accion(
-        "selector:adm_facultades",
-        "Explorar 3 Facultades, 10 Carreras y Puntajes Referenciales",
-        "Consulta cada Facultad, Director, puntaje corte IIS-2026 y cupos 1er nivel/nivelación.",
+    banner = (
+        f"<div style='background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46; padding:6px 10px; border-radius:6px; font-size:11.5px; margin-bottom:8px;'>{aviso_reset}</div>"
+        if aviso_reset
+        else ""
     )
+    opciones = [
+        ("admfaq:adm_cronograma_1pa2027", "Cronograma 1PA 2027"),
+        ("admfaq:adm_carreras_cupos_puntajes", "Carreras y puntajes"),
+        ("admfaq:adm_examen_simulador_puntaje", "Examen y simulador"),
+        ("admfaq:adm_inscripcion_y_requisitos", "Cómo inscribirme"),
+        ("admfaq:adm_costos_becas_vivienda", "Costos y gratuidad"),
+        ("selector:adm_facultades", "Directorio Facultades"),
+    ]
+    btns = "<div class='opciones-guiadas-grid' style='display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:8px 0;'>"
+    for cmd, lbl in opciones:
+        btns += render_boton_accion(cmd, lbl)
     btns += "</div>"
-    banner = f"<div style='background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46; padding:6px 9px; border-radius:5px; font-size:11.5px; margin-bottom:7px;'>{aviso_reset}</div>" if aviso_reset else ""
     return (
-        f"{banner}<p style='font-size:12px; margin:0 0 4px;'><strong>Bienvenido/a al Asesor Oficial de Admisiones Ikiam (1PA 2027).</strong></p>"
-        "<p style='font-size:12px; margin:0 0 6px;'>Atiendo exclusivamente consultas de ingreso, examen, carreras y nivelación inicial. Seleccione una opción o escriba su duda:</p>"
+        f"{banner}"
+        f"<div style='display:inline-flex; align-items:center; gap:5px; background:#eef7f2; color:#0d5f3a; font-weight:700; font-size:10.5px; padding:2px 8px; border-radius:10px; margin-bottom:6px;'><span style='display:inline-block; width:6px; height:6px; border-radius:50%; background:#22c55e;'></span>Admisiones Oficial 1PA 2027</div>"
+        f"<p style='font-size:12px; margin:0 0 5px; color:#1e293b; line-height:1.45;'><strong>¡Hola! Qué gusto saludarte.</strong> Te damos la bienvenida a Admisiones Ikiam. Estamos listos para orientarte en tu postulación.</p>"
+        f"<p style='font-size:11.5px; color:#64748b; margin:0 0 4px;'>Elige un tema frecuente o escribe directamente tu consulta:</p>"
         f"{btns}"
     )
 
@@ -1057,13 +1067,21 @@ def _extraer_opciones_html(html_text: str):
     """Extrae botones onclick='seleccionarOpcionCaso(...)' como opciones estructuradas para WhatsApp."""
     opts = []
     pat = re.compile(
-        r"""onclick=['"]seleccionarOpcionCaso\("([^"]+)",\s*"([^"]*)"\)['"][^>]*>.*?<div[^>]*>(.*?)</div>(?:\s*<div[^>]*>(.*?)</div>)?""",
+        r"""onclick=['"]seleccionarOpcionCaso\(['"]([^'"]+)['"],\s*['"]([^'"]*)['"]\)['"][^>]*>(.*?)</button>""",
         re.DOTALL,
     )
-    for cmd, lbl, titulo_html, desc_html in pat.findall(html_text or ""):
-        etiqueta = html_lib.unescape(re.sub(r"<[^>]+>", "", titulo_html or lbl)).strip()
-        desc = html_lib.unescape(re.sub(r"<[^>]+>", "", desc_html or "")).strip()
-        opts.append({"codigo_caso": html_lib.unescape(cmd), "etiqueta": etiqueta, "descripcion": desc})
+    for cmd, lbl, inner_html in pat.findall(html_text or ""):
+        divs = re.findall(r"<div[^>]*>(.*?)</div>", inner_html, re.DOTALL)
+        if len(divs) >= 2:
+            etiqueta = html_lib.unescape(re.sub(r"<[^>]+>", "", divs[0])).strip()
+            desc = html_lib.unescape(re.sub(r"<[^>]+>", "", divs[1])).strip()
+        elif len(divs) == 1:
+            etiqueta = html_lib.unescape(re.sub(r"<[^>]+>", "", divs[0])).strip()
+            desc = ""
+        else:
+            etiqueta = html_lib.unescape(re.sub(r"<[^>]+>", "", inner_html or lbl)).strip()
+            desc = ""
+        opts.append({"codigo_caso": html_lib.unescape(cmd), "etiqueta": etiqueta or lbl, "descripcion": desc})
     return opts
 
 

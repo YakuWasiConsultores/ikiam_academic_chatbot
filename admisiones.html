@@ -2516,20 +2516,34 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
     font-weight: 600;
   }
   .chip-btn {
-    background: #eef7f2;
+    background: #ffffff;
     border: 1px solid #b7dec9;
     color: #0d5f3a;
-    padding: 4px 8px;
-    border-radius: 4px;
+    padding: 5px 11px;
+    border-radius: 14px;
     font-size: 11px;
     font-weight: 600;
     cursor: pointer;
-    margin: 2px;
+    margin: 2px 1px;
     display: inline-block;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 2px rgba(13, 95, 58, 0.06);
   }
   .chip-btn:hover {
     background: #0d5f3a;
-    color: white;
+    border-color: #0d5f3a;
+    color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(13, 95, 58, 0.2);
+  }
+  .btn-opcion-guia {
+    transition: all 0.2s ease;
+  }
+  .btn-opcion-guia:hover {
+    background-color: #f0fdf4 !important;
+    border-color: #0d5f3a !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(13, 95, 58, 0.14);
   }
   @media (max-width: 480px) {
     #widget-academico-window {
@@ -2560,15 +2574,23 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
     </div>
   </div>
   <div id="widget-academico-msgs">
-    <div class="msg-item msg-bot">
-      <strong>Bienvenido/a al Asistente Oficial de Admisiones Ikiam (1PA 2027).</strong><br>
-      <span style="font-size:11px; color:#475569;">Canal formal para postulantes de nuevo ingreso. Responde sobre etapas, carreras, puntajes y simulador de evaluación.</span>
-      <div style="margin-top:7px;">
+    <div class="msg-item msg-bot" style="border-left: 3px solid #0d5f3a; padding: 10px 12px;">
+      <div style="display:inline-flex; align-items:center; gap:5px; background:#eef7f2; color:#0d5f3a; font-weight:700; font-size:10.5px; padding:2px 8px; border-radius:10px; margin-bottom:6px;">
+        <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#22c55e;"></span>
+        Admisiones Oficial 1PA 2027
+      </div>
+      <p style="font-size:12px; margin:0 0 5px; color:#1e293b; line-height:1.45;">
+        <strong>¡Hola! Qué gusto saludarte.</strong> Te damos una cordial bienvenida a Ikiam. Estamos listos para orientarte paso a paso en tu proceso de admisión.
+      </p>
+      <p style="font-size:11.5px; color:#64748b; margin:0 0 8px;">
+        Escribe cualquier consulta o pulsa un tema frecuente:
+      </p>
+      <div style="display:flex; flex-wrap:wrap; gap:5px;">
         <span class="chip-btn" onclick="consultarChipAdmisiones('Cronograma oficial del proceso 1PA 2027')">Cronograma 1PA 2027</span>
-        <span class="chip-btn" onclick="consultarChipAdmisiones('Oferta de carreras y puntajes referenciales')">Oferta y puntajes</span>
-        <span class="chip-btn" onclick="consultarChipAdmisiones('Simulador de examen temarios y fechas')">Simulador y temarios</span>
-        <span class="chip-btn" onclick="consultarChipAdmisiones('Registro Nacional Senescyt e inscripción')">Registro e inscripción</span>
-        <span class="chip-btn" onclick="consultarChipAdmisiones('Contacto oficial de admisiones')">Contacto oficial</span>
+        <span class="chip-btn" onclick="consultarChipAdmisiones('Oferta de carreras y puntajes referenciales')">Carreras y puntajes</span>
+        <span class="chip-btn" onclick="consultarChipAdmisiones('Simulador de examen temarios y fechas')">Examen y simulador</span>
+        <span class="chip-btn" onclick="consultarChipAdmisiones('Registro Nacional Senescyt e inscripción')">Inscripción y registro</span>
+        <span class="chip-btn" onclick="consultarChipAdmisiones('Costos, gratuidad y residencias en Ikiam')">Costos y gratuidad</span>
       </div>
     </div>
   </div>
