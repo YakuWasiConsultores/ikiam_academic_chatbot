@@ -10,8 +10,10 @@ DOCS_DIR = os.path.join(BASE_DIR, "documentos_oficiales")
 PORT = int(os.environ.get("PORT", 8080))
 
 from asesor_gemini_puro import responder_consulta
+from whatsapp_adapter import register_whatsapp_routes
 
 app = Flask(__name__, static_folder=None)
+register_whatsapp_routes(app)
 
 # Rate limiting ligero por IP (25 peticiones por minuto por IP)
 IP_RATE_LIMITS = {}

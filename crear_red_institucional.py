@@ -2,8 +2,12 @@
 """
 Script de creación y población de ikiam_network_org.db
 Modela la Red Institucional de la Universidad Regional Amazónica Ikiam:
-- Dependencias universitarias, autoridades y coordinaciones de carrera.
-- Correos oficiales validados.
+- 3 Facultades oficiales:
+  1. Facultad de Ciencias de la Tierra y Agua
+  2. Facultad de Ciencias de la Vida
+  3. Facultad de Ciencias Socioambientales
+- Coordinaciones de carrera agrupadas por su respectiva Facultad.
+- Dependencias universitarias, autoridades y correos oficiales.
 - Mapeo relacional de trámites y casos de uso por documento.
 """
 
@@ -21,6 +25,28 @@ def init_network_db():
     cur = conn.cursor()
 
     cur.execute("""
+    CREATE TABLE facultades (
+        codigo TEXT PRIMARY KEY,
+        nombre TEXT NOT NULL,
+        area_conocimiento TEXT NOT NULL,
+        descripcion TEXT
+    );
+    """)
+
+    cur.execute("""
+    CREATE TABLE coordinaciones_carrera (
+        codigo TEXT PRIMARY KEY,
+        carrera TEXT NOT NULL,
+        facultad_codigo TEXT NOT NULL,
+        facultad_nombre TEXT NOT NULL,
+        correo_coordinacion TEXT NOT NULL,
+        coordinador TEXT,
+        titulo_otorgado TEXT,
+        FOREIGN KEY (facultad_codigo) REFERENCES facultades(codigo)
+    );
+    """)
+
+    cur.execute("""
     CREATE TABLE dependencias (
         id TEXT PRIMARY KEY,
         nombre TEXT NOT NULL,
@@ -30,17 +56,6 @@ def init_network_db():
         horario_atencion TEXT,
         competencias_clave TEXT,
         enlace_web TEXT
-    );
-    """)
-
-    cur.execute("""
-    CREATE TABLE coordinaciones_carrera (
-        codigo TEXT PRIMARY KEY,
-        carrera TEXT NOT NULL,
-        facultad TEXT NOT NULL,
-        correo_coordinacion TEXT NOT NULL,
-        coordinador TEXT,
-        titulo_otorgado TEXT
     );
     """)
 
@@ -63,7 +78,130 @@ def init_network_db():
     );
     """)
 
-    # 1. Inserción de dependencias institucionales
+    # 1. Inserción de las 3 Facultades Oficiales de Ikiam
+    facultades_data = [
+        (
+            "FCTA",
+            "Facultad de Ciencias de la Tierra y Agua",
+            "Dinámica terrestre, hidrología, geología, geomateriales, energías y agroecosistemas",
+            "Enfocada en el estudio de los recursos hídricos, la geología amazónica, la agroecología y energías sostenibles."
+        ),
+        (
+            "FCV",
+            "Facultad de Ciencias de la Vida",
+            "Biodiversidad, ecosistemas, biotecnología aplicada, sanidad y manejo de fauna",
+            "Centrada en la investigación, manejo y biotecnología de la megadiversidad amazónica y salud animal."
+        ),
+        (
+            "FCS",
+            "Facultad de Ciencias Socioambientales",
+            "Sostenibilidad, bioeconomía, hábitat amazónico, pedagogía y desarrollo comunitario",
+            "Aborda la interacción entre comunidades humanas, bioemprendimiento, arquitectura bioclimática y educación científica."
+        )
+    ]
+    cur.executemany("INSERT INTO facultades VALUES (?, ?, ?, ?);", facultades_data)
+
+    # 2. Inserción de Coordinaciones de Carrera agrupadas por Facultad
+    coordinaciones_data = [
+        # --- FACULTAD DE CIENCIAS DE LA TIERRA Y AGUA ---
+        (
+            "GEOCIEN",
+            "Ingeniería en Geociencias",
+            "FCTA",
+            "Facultad de Ciencias de la Tierra y Agua",
+            "geociencias@ikiam.edu.ec",
+            "Coordinación de Geociencias",
+            "Ingeniero/a en Geociencias"
+        ),
+        (
+            "HIDRO",
+            "Ingeniería en Hidrología / Ciencias del Agua",
+            "FCTA",
+            "Facultad de Ciencias de la Tierra y Agua",
+            "cienciasdelagua@ikiam.edu.ec",
+            "Coordinación de Hidrología",
+            "Ingeniero/a en Hidrología / Ciencias del Agua"
+        ),
+        (
+            "AGROECO",
+            "Ingeniería en Agroecología",
+            "FCTA",
+            "Facultad de Ciencias de la Tierra y Agua",
+            "agroecologia@ikiam.edu.ec",
+            "Coordinación de Agroecología",
+            "Ingeniero/a en Agroecología"
+        ),
+        (
+            "ELECTROMEC",
+            "Ingeniería en Electromecánica y Energías Renovables",
+            "FCTA",
+            "Facultad de Ciencias de la Tierra y Agua",
+            "electromecanica@ikiam.edu.ec",
+            "Coordinación de Electromecánica",
+            "Ingeniero/a en Electromecánica"
+        ),
+
+        # --- FACULTAD DE CIENCIAS DE LA VIDA ---
+        (
+            "BIOTEC",
+            "Ingeniería en Biotecnología",
+            "FCV",
+            "Facultad de Ciencias de la Vida",
+            "biotecnologia@ikiam.edu.ec",
+            "Coordinación de Biotecnología",
+            "Ingeniero/a en Biotecnología"
+        ),
+        (
+            "ECOSIST",
+            "Ingeniería en Ecosistemas",
+            "FCV",
+            "Facultad de Ciencias de la Vida",
+            "ecosistemas@ikiam.edu.ec",
+            "Coordinación de Ecosistemas",
+            "Ingeniero/a en Ecosistemas"
+        ),
+        (
+            "VETERINARIA",
+            "Medicina Veterinaria y Manejo de Vida Silvestre",
+            "FCV",
+            "Facultad de Ciencias de la Vida",
+            "veterinaria@ikiam.edu.ec",
+            "Coordinación de Veterinaria",
+            "Médico/a Veterinario/a"
+        ),
+
+        # --- FACULTAD DE CIENCIAS SOCIOAMBIENTALES ---
+        (
+            "BIOCOM",
+            "Licenciatura en Biocomercio",
+            "FCS",
+            "Facultad de Ciencias Socioambientales",
+            "biocomercio@ikiam.edu.ec",
+            "Coordinación de Biocomercio",
+            "Licenciado/a en Biocomercio"
+        ),
+        (
+            "ARQUITECTURA",
+            "Arquitectura Sostenible",
+            "FCS",
+            "Facultad de Ciencias Socioambientales",
+            "arquitectura@ikiam.edu.ec",
+            "Coordinación de Arquitectura Sostenible",
+            "Arquitecto/a Sostenible"
+        ),
+        (
+            "EDUCACION",
+            "Educación en Ciencias Experimentales",
+            "FCS",
+            "Facultad de Ciencias Socioambientales",
+            "educacion@ikiam.edu.ec",
+            "Coordinación de Educación",
+            "Licenciado/a en Educación en Ciencias Experimentales"
+        )
+    ]
+    cur.executemany("INSERT INTO coordinaciones_carrera VALUES (?, ?, ?, ?, ?, ?, ?);", coordinaciones_data)
+
+    # 3. Dependencias institucionales
     dependencias_data = [
         (
             "vicerrectorado_academico",
@@ -117,7 +255,7 @@ def init_network_db():
         ),
         (
             "coordinaciones_carrera",
-            "Coordinaciones de Carrera de Pregrado",
+            "Coordinaciones de Carrera de Pregrado (Por Facultades)",
             "coordinacion_carrera",
             "coordinaciones@ikiam.edu.ec",
             "Coordinadores de Carrera",
@@ -126,81 +264,9 @@ def init_network_db():
             "https://www.ikiam.edu.ec/index.php/oferta-academica/"
         )
     ]
+    cur.executemany("INSERT INTO dependencias VALUES (?, ?, ?, ?, ?, ?, ?, ?);", dependencias_data)
 
-    cur.executemany("""
-    INSERT INTO dependencias VALUES (?, ?, ?, ?, ?, ?, ?, ?);
-    """, dependencias_data)
-
-    # 2. Inserción de coordinaciones de carrera
-    coordinaciones_data = [
-        (
-            "BIOCOM",
-            "Licenciatura en Biocomercio",
-            "Ciencias de la Vida",
-            "biocomercio@ikiam.edu.ec",
-            "Coordinación de Biocomercio",
-            "Licenciado/a en Biocomercio"
-        ),
-        (
-            "BIOTEC",
-            "Ingeniería en Biotecnología",
-            "Ciencias de la Vida",
-            "biotecnologia@ikiam.edu.ec",
-            "Coordinación de Biotecnología",
-            "Ingeniero/a en Biotecnología"
-        ),
-        (
-            "GEOCIEN",
-            "Ingeniería en Geociencias",
-            "Ciencias de la Tierra y el Agua",
-            "geociencias@ikiam.edu.ec",
-            "Coordinación de Geociencias",
-            "Ingeniero/a en Geociencias"
-        ),
-        (
-            "ECOSIST",
-            "Ingeniería en Ecosistemas",
-            "Ciencias de la Tierra y el Agua",
-            "ecosistemas@ikiam.edu.ec",
-            "Coordinación de Ecosistemas",
-            "Ingeniero/a en Ecosistemas"
-        ),
-        (
-            "AGROECO",
-            "Ingeniería en Agroecología",
-            "Ciencias de la Vida",
-            "agroecologia@ikiam.edu.ec",
-            "Coordinación de Agroecología",
-            "Ingeniero/a en Agroecología"
-        ),
-        (
-            "CIENAGUA",
-            "Ingeniería en Ciencias del Agua",
-            "Ciencias de la Tierra y el Agua",
-            "cienciasdelagua@ikiam.edu.ec",
-            "Coordinación de Ciencias del Agua",
-            "Ingeniero/a en Ciencias del Agua"
-        )
-    ]
-
-    cur.executemany("""
-    INSERT INTO coordinaciones_carrera VALUES (?, ?, ?, ?, ?, ?);
-    """, coordinaciones_data)
-
-    # 3. Inserción de casos específicos por documento
-    # Formato de tupla:
-    # 0: codigo_caso
-    # 1: documento_archivo
-    # 2: nombre_tramite
-    # 3: perfil_estudiante
-    # 4: descripcion_caso
-    # 5: dependencia_id
-    # 6: autoridad_destinataria
-    # 7: correo_destino
-    # 8: plazo_reglamentario
-    # 9: requisitos_adjuntos
-    # 10: pasos_procedimiento
-    # 11: enlace_descarga
+    # 4. Inserción de casos específicos por documento
     casos_data = [
         # --- INGRESO Y ADMISIÓN ---
         (
@@ -208,7 +274,7 @@ def init_network_db():
             "admision_bachiller_nacional",
             "Admisión por Primera Vez (Bachiller Nacional)",
             "Bachiller nacional recién graduado o aspirante por proceso general",
-            "Ruta oficial para bachilleres ecuatorianos que ingresan por asignación de cupo a primer nivel o nivelación de carrera.",
+            "Ruta oficial para bachilleres ecuatorianos que ingresan por asignación de cupo a primer nivel o nivelación de carrera en cualquiera de las 3 facultades de Ikiam.",
             "admision_secretaria",
             "Dirección de Admisión y Registro",
             "admision@ikiam.edu.ec",
@@ -242,7 +308,7 @@ def init_network_db():
             "vicerrectorado.academico@ikiam.edu.ec",
             "Fechas oficiales según Calendario: del 1 al 18 de diciembre (o periodos intersemestrales)",
             "Formulario Solicitud de Cambio de Universidad (.docx), Récord académico oficial con calificaciones y número de horas/créditos, Certificado de no haber sido sancionado disciplinariamente, Sílabos o programas analíticos sellados por la universidad de origen (mínimo 80% de coincidencia temática).",
-            "1. Descargar y firmar el formulario oficial de cambio de universidad. 2. Adjuntar récord oficial y sílabos sellados. 3. Enviar a vicerrectorado.academico@ikiam.edu.ec dentro del plazo de calendario. 4. La comisión de carrera emitirá el dictamen de equivalencia.",
+            "1. Descargar y firmar el formulario oficial de cambio de universidad. 2. Adjuntar récord oficial y sílabos sellados. 3. Enviar a vicerrectorado.academico@ikiam.edu.ec dentro del plazo de calendario. 4. La comisión de carrera y facultad emitirá el dictamen de equivalencia.",
             "/documentos/Solicitud-de-cambio-de-universidad.docx"
         ),
         (
@@ -256,7 +322,7 @@ def init_network_db():
             "vicerrectorado.academico@ikiam.edu.ec",
             "Hasta 30 días antes del inicio del periodo académico a cursar",
             "Formulario Solicitud de Reingreso (.docx) debidamente llenado, Copia de cédula o pasaporte, Historial académico descargado del sistema SGA.",
-            "1. Descargar el formato oficial de reingreso. 2. Especificar el último semestre cursado y motivo de la interrupción. 3. Remitir al Vicerrectorado Académico. 4. Si la malla curricular cambió, se aplicará homologación interna.",
+            "1. Descargar el formato oficial de reingreso. 2. Especificar el último semestre cursado y motivo de la interrupción. 3. Remitir al Vicerrectorado Académico. 4. Si la malla curricular cambió, se aplicará homologación interna en la facultad correspondiente.",
             "/documentos/FORMATO-SOLICITUD-DE-REINGRESO.docx"
         ),
         (
@@ -264,7 +330,7 @@ def init_network_db():
             "Solicitud-de-cambio-de-carrera.docx",
             "Cambio de Carrera Interno en Ikiam",
             "Estudiante regular de Ikiam que ha aprobado al menos el primer semestre",
-            "Movilidad académica interna para cambiarse a otra oferta académica dentro de Ikiam cumpliendo el puntaje referencial.",
+            "Movilidad académica interna entre carreras de la misma o diferente facultad cumpliendo el puntaje referencial.",
             "vicerrectorado_academico",
             "Vicerrectorado Académico",
             "vicerrectorado.academico@ikiam.edu.ec",
@@ -283,10 +349,10 @@ def init_network_db():
             "Retiro temprano para no perjudicar el promedio ni incurrir en faltas ni pérdida de gratuidad.",
             "coordinaciones_carrera",
             "Coordinación de Carrera correspondiente",
-            "coordinacion_carrera (utilizar el correo institucional de su carrera)",
+            "coordinacion_carrera (utilizar el correo institucional de la carrera según su Facultad)",
             "Dentro de los primeros 30 días calendario contados desde el inicio oficial de clases",
             "Formulario de Solicitud de Retiro Voluntario (.docx) firmado, Copia de cédula de identidad.",
-            "1. Descargar el formulario oficial de retiro. 2. Detallar la(s) asignatura(s) a retirar. 3. Enviar por correo a la Coordinación de Carrera y registrar la solicitud en el Portal de Procesos Académicos.",
+            "1. Descargar el formulario oficial de retiro. 2. Detallar la(s) asignatura(s) a retirar. 3. Enviar por correo a la Coordinación de Carrera de su Facultad y registrar la solicitud en el Portal de Procesos Académicos.",
             "/documentos/Formato-Solicitud-Retiro-Voluntario-Asignatura.docx"
         ),
         (
@@ -300,7 +366,7 @@ def init_network_db():
             "coordinacion_carrera y vicerrectorado.academico@ikiam.edu.ec",
             "Hasta antes de la fecha de inicio del periodo de exámenes finales",
             "Formulario de Solicitud de Retiro (.docx), Certificado médico validado por Bienestar Universitario (bienestar@ikiam.edu.ec) o Documentos probatorios de la calamidad.",
-            "1. Obtener certificado médico o soporte legal de la calamidad. 2. Validar con Bienestar Universitario. 3. Remitir solicitud a Coordinación de Carrera y Vicerrectorado Académico.",
+            "1. Obtener certificado médico o soporte legal de la calamidad. 2. Validar con Bienestar Universitario. 3. Remitir solicitud a la Coordinación de Carrera de su Facultad y Vicerrectorado Académico.",
             "/documentos/Formato-Solicitud-Retiro-Voluntario-Asignatura.docx"
         ),
         (
@@ -330,7 +396,7 @@ def init_network_db():
             "coordinacion_carrera (con copia a bienestar@ikiam.edu.ec)",
             "Máximo 3 días hábiles contados a partir de la reincorporación a clases",
             "Formulario de Justificación de Inasistencias (.docx), Certificado médico avalado por IESS/MSP o validado por el consultorio de Bienestar Universitario.",
-            "1. Validar certificado en Bienestar Universitario (bienestar@ikiam.edu.ec). 2. Llenar el formulario indicando fechas y materias afectadas. 3. Enviar a Coordinación de Carrera para reprogramación de exámenes.",
+            "1. Validar certificado en Bienestar Universitario (bienestar@ikiam.edu.ec). 2. Llenar el formulario indicando fechas y materias afectadas. 3. Enviar a la Coordinación de Carrera de su Facultad para reprogramación de exámenes.",
             "/documentos/Formato-Solicitud-Justificacion-Inasistencias.docx"
         ),
         (
@@ -341,10 +407,10 @@ def init_network_db():
             "Justificación formal de ausencias sin certificado médico mediante evidencias y carta motivada.",
             "coordinaciones_carrera",
             "Coordinación de Carrera",
-            "coordinacion_carrera (utilizar el correo institucional de su carrera)",
+            "coordinacion_carrera (utilizar el correo institucional de su carrera según la Facultad)",
             "Máximo 3 días hábiles tras la reincorporación a clases",
             "Formulario de Justificación (.docx), Carta motivada detallando los hechos, Documentos probatorios (actas de defunción, siniestro, etc.).",
-            "1. Completar la solicitud detallando asignaturas y evaluaciones pendientes. 2. Remitir con los respaldos a la Coordinación de Carrera para coordinar reprogramación con los docentes.",
+            "1. Completar la solicitud detallando asignaturas y evaluaciones pendientes. 2. Remitir con los respaldos a la Coordinación de Carrera de su Facultad para coordinar reprogramación con los docentes.",
             "/documentos/Formato-Solicitud-Justificacion-Inasistencias.docx"
         ),
 
@@ -418,9 +484,9 @@ def init_network_db():
     """, casos_data)
 
     conn.commit()
-    print(f"Base de datos {DB_PATH} creada con exito.")
-    print(f"Dependencias: {cur.execute('SELECT COUNT(1) FROM dependencias').fetchone()[0]}")
-    print(f"Coordinaciones: {cur.execute('SELECT COUNT(1) FROM coordinaciones_carrera').fetchone()[0]}")
+    print(f"Base de datos {DB_PATH} actualizada con exito.")
+    print(f"Facultades: {cur.execute('SELECT COUNT(1) FROM facultades').fetchone()[0]}")
+    print(f"Coordinaciones por Facultad: {cur.execute('SELECT COUNT(1) FROM coordinaciones_carrera').fetchone()[0]}")
     print(f"Casos Mapeados: {cur.execute('SELECT COUNT(1) FROM casos_tramite_red').fetchone()[0]}")
     conn.close()
 
