@@ -2042,6 +2042,15 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
     background: #0d5f3a;
     color: white;
   }
+  .btn-opcion-guia:hover {
+    background-color: #f0fdf4 !important;
+    border-color: #0b4e30 !important;
+    box-shadow: 0 2px 6px rgba(13, 95, 58, 0.18);
+    transform: translateY(-1px);
+  }
+  .btn-opcion-guia:active {
+    transform: translateY(0);
+  }
 </style>
 
 <button id="widget-academico-btn" onclick="toggleAcademicoChat()">
@@ -2092,6 +2101,42 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
     document.getElementById('widget-academico-input').value = txt;
     enviarConsultaAcademica();
   }
+
+  window.seleccionarOpcionCaso = async function(codigoCaso, etiquetaTexto) {
+    var msgs = document.getElementById('widget-academico-msgs');
+    var uDiv = document.createElement('div');
+    uDiv.className = 'msg-item msg-user';
+    uDiv.innerText = etiquetaTexto || codigoCaso;
+    msgs.appendChild(uDiv);
+    msgs.scrollTop = msgs.scrollHeight;
+
+    var bDiv = document.createElement('div');
+    bDiv.className = 'msg-item msg-bot';
+    bDiv.innerHTML = '<span style="color:#0d5f3a; font-size:12px;">Cargando requisitos oficiales y contactos...</span>';
+    msgs.appendChild(bDiv);
+    msgs.scrollTop = msgs.scrollHeight;
+
+    try {
+      var sid = sessionStorage.getItem('ikiam_user_sid');
+      if (!sid) {
+        sid = 'usr_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+        sessionStorage.setItem('ikiam_user_sid', sid);
+      }
+      var endpoint = window.location.origin + '/api/chat';
+      var res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ message: codigoCaso, sessionId: sid })
+      });
+      var data = await res.json();
+      var reply = data.reply ? data.reply : 'No se pudo cargar la información del trámite seleccionado.';
+      reply = reply.replace(/href=(['"])\/documentos\//g, 'href=$1' + window.location.origin + '/documentos/');
+      bDiv.innerHTML = reply;
+    } catch(err) {
+      bDiv.innerText = 'Error de conexión con el servicio académico.';
+    }
+    msgs.scrollTop = msgs.scrollHeight;
+  };
 
   async function enviarConsultaAcademica() {
     var input = document.getElementById('widget-academico-input');
