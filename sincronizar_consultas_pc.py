@@ -1,16 +1,19 @@
 # -*- coding: utf-8 -*-
 """
 Script de sincronización de consultas reales entre el servidor en vivo (Render/Local)
-y la PC del usuario (con soporte para exportación a Excel, OneDrive y Google Drive).
+y la PC del usuario (con soporte para autenticación segura, exportación a Excel, OneDrive y Google Drive).
 
 Uso:
-  1. Descargar consultas del servidor a la PC:
+  1. Descargar consultas del servidor a la PC (usa token por defecto o argumento):
      python sincronizar_consultas_pc.py
 
-  2. Descargar continuamente cada N segundos:
+  2. Con token explícito si se cambió en el servidor:
+     python sincronizar_consultas_pc.py --token ikiam_admin_sec_2027
+
+  3. Descargar continuamente cada N segundos:
      python sincronizar_consultas_pc.py --intervalo 60
 
-  3. Incorporar respuestas corregidas por el usuario a la base de FAQs oficial:
+  4. Incorporar respuestas corregidas por el usuario a la base de FAQs oficial:
      python sincronizar_consultas_pc.py --incorporar
 """
 
@@ -23,13 +26,18 @@ import time
 import urllib.request
 
 DEFAULT_SERVER_URL = os.environ.get("IKIAM_SERVER_URL", "https://ikiam-academic-chatbot.onrender.com")
+DEFAULT_ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "ikiam_admin_sec_2027")
 LOCAL_CSV_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "registro_consultas_estudiantes.csv")
 ONEDRIVE_PATH = os.path.expanduser(r"~\OneDrive\registro_consultas_ikiam.csv")
 
-def descargar_consultas(servidor_url: str = DEFAULT_SERVER_URL, ruta_salida: str = LOCAL_CSV_PATH):
-    """Descarga el CSV con todas las consultas desde el endpoint de auditoría."""
+def descargar_consultas(servidor_url: str = DEFAULT_SERVER_URL, ruta_salida: str = LOCAL_CSV_PATH, token: str = DEFAULT_ADMIN_TOKEN):
+    """Descarga el CSV con todas las consultas desde el endpoint de auditoría con autenticación segura."""
     endpoint = f"{servidor_url.rstrip('/')}/api/consultas/exportar?formato=csv"
-    req = urllib.request.Request(endpoint, headers={"User-Agent": "Ikiam-Sync-PC/1.0"})
+    headers = {
+        "User-Agent": "Ikiam-Sync-PC/1.0",
+        "X-Admin-Token": token
+    }
+    req = urllib.request.Request(endpoint, headers=headers)
     try:
         with urllib.request.urlopen(req, timeout=25) as resp:
             data = resp.read()
@@ -43,6 +51,12 @@ def descargar_consultas(servidor_url: str = DEFAULT_SERVER_URL, ruta_salida: str
                 shutil.copy2(ruta_salida, ONEDRIVE_PATH)
                 print(f"[OK] Copia sincronizada en OneDrive: {ONEDRIVE_PATH}")
             return True
+    except urllib.error.HTTPError as he:
+        if he.code == 401:
+            print(f"[ERROR] Acceso denegado (401). El token de administración proporcionado no es válido.")
+        else:
+            print(f"[ERROR HTTP {he.code}] al descargar del servidor ({servidor_url}): {he}")
+        return False
     except Exception as e:
         print(f"[ERROR] No se pudo descargar del servidor ({servidor_url}): {e}")
         return False
@@ -85,6 +99,7 @@ def incorporar_respuestas_revisadas(ruta_csv: str = LOCAL_CSV_PATH):
 def main():
     parser = argparse.ArgumentParser(description="Sincronizador de consultas de estudiantes Ikiam")
     parser.add_argument("--servidor", default=DEFAULT_SERVER_URL, help="URL del servidor chatbot")
+    parser.add_argument("--token", default=DEFAULT_ADMIN_TOKEN, help="Token administrativo para autenticación")
     parser.add_argument("--intervalo", type=int, default=0, help="Segundos entre sincronizaciones (0 = una sola vez)")
     parser.add_argument("--incorporar", action="store_true", help="Alimentar las respuestas corregidas en Excel a la base de datos de FAQs")
     args = parser.parse_args()
@@ -96,10 +111,10 @@ def main():
     if args.intervalo > 0:
         print(f"Iniciando sincronización continua cada {args.intervalo}s contra {args.servidor}...")
         while True:
-            descargar_consultas(args.servidor)
+            descargar_consultas(args.servidor, token=args.token)
             time.sleep(args.intervalo)
     else:
-        descargar_consultas(args.servidor)
+        descargar_consultas(args.servidor, token=args.token)
 
 if __name__ == "__main__":
     main()
