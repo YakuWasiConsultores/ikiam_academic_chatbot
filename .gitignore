@@ -4,3 +4,4 @@ __pycache__/
 .env
 sessions/
 *.tmp
+registro_consultas_estudiantes.csv
