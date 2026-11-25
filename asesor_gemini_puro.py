@@ -337,10 +337,15 @@ def formatear_respuesta_caso(datos_caso) -> str:
     # Botón descarga documento
     enlace_html = ""
     if doc_archivo and doc_archivo in ARCHIVOS_REALES:
-        label_doc = "Descargar Formato Oficial (.docx)" if doc_archivo.lower().endswith(".docx") else "Descargar Documento Normativo (.pdf)"
-        enlace_html = f"<div style='margin:8px 0;'><a href='/documentos/{doc_archivo}' target='_blank' style='display:inline-block; background:#0d5f3a; color:#ffffff; padding:7px 12px; border-radius:5px; font-size:12px; font-weight:600; text-decoration:none;'>{label_doc}</a></div>"
+        if doc_archivo.lower().endswith(".pdf"):
+            label_doc = "Visualizar Documento Oficial (PDF en línea)"
+        else:
+            label_doc = "Descargar Formato Oficial (.docx)"
+        enlace_html = f"<div style='margin:8px 0;'><a href='/documentos/{doc_archivo}' target='_blank' rel='noopener noreferrer' style='display:inline-block; background:#0d5f3a; color:#ffffff; padding:7px 12px; border-radius:5px; font-size:12px; font-weight:600; text-decoration:none;'>{label_doc}</a></div>"
     elif enlace and enlace.startswith("http"):
-        enlace_html = f"<div style='margin:8px 0;'><a href='{enlace}' target='_blank' style='display:inline-block; background:#0d5f3a; color:#ffffff; padding:7px 12px; border-radius:5px; font-size:12px; font-weight:600; text-decoration:none;'>Abrir Portal Oficial Ikiam</a></div>"
+        is_online_pdf = enlace.lower().endswith(".pdf") or "pdf" in enlace.lower()
+        label_portal = "Visualizar Documento en Línea (PDF)" if is_online_pdf else "Abrir Portal Oficial Ikiam"
+        enlace_html = f"<div style='margin:8px 0;'><a href='{enlace}' target='_blank' rel='noopener noreferrer' style='display:inline-block; background:#0d5f3a; color:#ffffff; padding:7px 12px; border-radius:5px; font-size:12px; font-weight:600; text-decoration:none;'>{label_portal}</a></div>"
 
     # Si ya seleccionó su carrera o vino en la consulta, personalizar exactamente su Director / Decano / Delegado
     destino_personalizado_html = ""
@@ -598,7 +603,7 @@ def buscar_contexto_multi_db(pregunta: str, codigo_carrera: str = None):
                 )
                 fragment_rows = cur.fetchall()
                 cur.execute(
-                    "SELECT archivo, titulo, autoridad_destino, descripcion, enlace_descarga, casos_uso_count FROM catalogo_documentos WHERE id IN (SELECT rowid FROM catalogo_fts WHERE catalogo_fts MATCH ? LIMIT 5) ORDER BY (ambito='estudiantil_pregrado') DESC, casos_uso_count DESC",
+                    "SELECT archivo, titulo, autoridad_destino, descripcion, enlace_descarga, casos_uso_count FROM catalogo_documentos WHERE id IN (SELECT rowid FROM catalogo_fts WHERE catalogo_fts MATCH ? ORDER BY rank LIMIT 5) ORDER BY (ambito='estudiantil_pregrado') DESC, casos_uso_count DESC",
                     (fts_query,)
                 )
                 docs_rows = cur.fetchall()
@@ -728,11 +733,15 @@ def limpiar_formato_html(texto: str) -> str:
         if url.startswith("/documentos/"):
             fname = os.path.basename(url)
             if fname in ARCHIVOS_REALES:
-                return f"<a href='/documentos/{fname}' target='_blank' style='color:#0d5f3a; font-weight:bold; text-decoration:underline;'>{txt}</a>"
+                if fname.lower().endswith(".pdf"):
+                    return f"<a href='/documentos/{fname}' target='_blank' rel='noopener noreferrer' style='display:inline-flex; align-items:center; gap:5px; color:#065f46; font-weight:700; text-decoration:none; background:#ecfdf5; border:1px solid #10b981; padding:4px 9px; border-radius:4px; font-size:11.5px; margin:2px 0;' title='Visualizar PDF en línea'>Visualizar PDF: {txt}</a>"
+                return f"<a href='/documentos/{fname}' target='_blank' rel='noopener noreferrer' style='display:inline-flex; align-items:center; gap:5px; color:#0d5f3a; font-weight:700; text-decoration:none; background:#f0fdf4; border:1px solid #86efac; padding:4px 9px; border-radius:4px; font-size:11.5px; margin:2px 0;' title='Descargar formato'>Descargar Formato (.docx): {txt}</a>"
             return f"{txt} (disponible en el <a href='https://www.ikiam.edu.ec/index.php/procesos-academicos/' target='_blank' style='color:#0d5f3a; font-weight:bold; text-decoration:underline;'>Portal de Procesos Académicos Ikiam</a>)"
         if url.startswith("mailto:"):
             return f"<a href='{url}' style='color:#0d5f3a; font-weight:bold; text-decoration:underline;'>{txt}</a>"
-        return f"<a href='{url}' target='_blank' style='color:#0d5f3a; font-weight:bold; text-decoration:underline;'>{txt}</a>"
+        if url.lower().endswith(".pdf") or "pdf" in url.lower():
+            return f"<a href='{url}' target='_blank' rel='noopener noreferrer' style='display:inline-flex; align-items:center; gap:5px; color:#1e40af; font-weight:700; text-decoration:none; background:#eff6ff; border:1px solid #3b82f6; padding:4px 9px; border-radius:4px; font-size:11.5px; margin:2px 0;' title='Visualizar PDF en línea'>Visualizar PDF en línea: {txt}</a>"
+        return f"<a href='{url}' target='_blank' rel='noopener noreferrer' style='color:#0d5f3a; font-weight:bold; text-decoration:underline;'>{txt}</a>"
 
     t = re.sub(r"\[([^\]]+)\]\((https?://[^\s\)]+|mailto:[^\s\)]+|/[^\s\)]+)\)", repl_md, t)
 
@@ -1084,7 +1093,7 @@ REGLAS ESTRICTAS:
 - Responde ÚNICAMENTE sobre admisión, Registro Nacional SENESCYT, inscripciones (eval.ikiam.edu.ec), simulador, examen, 3 Facultades / 10 Carreras presenciales, puntajes referenciales IIS-2026, nivelación virtual vs 1er semestre, gratuidad/becas de acceso, residencias (NO hay residencias propias), extranjeros y homologación de ingreso.
 - Si preguntan algo ajeno a admisión (tesis, retiros regulares, prácticas, licitaciones), indícalo cordialmente y remite a Procesos Académicos o a oficina.admision@ikiam.edu.ec (Ext. 322 / WhatsApp 0982142499).
 - No uses fechas pasadas de 2024 ni II PA 2026; usa únicamente las fechas vigentes 1PA 2027 entregadas en el contexto.
-- Redacta en Markdown limpio (negritas, viñetas, correos directos o enlaces [texto](url)); NO emitas etiquetas HTML crudas como <div>, <p> o <br>.
+- Redacta en Markdown limpio (negritas, viñetas, correos directos o enlaces [texto](url)); si el aspirante solicita ver documentos, temarios, convocatorias o resoluciones oficiales, incluye siempre el enlace directo correspondiente para visualizarlo; NO emitas etiquetas HTML crudas como <div>, <p> o <br>.
 - PROHIBIDO incluir emojis, emoticones o iconos gráficos Unicode. Mantén un tono institucional formal."""
 
     user_adm = f"FECHA ACTUAL: 24/11/2026 (Hoy inicia 1ra Etapa Registro Nacional 1PA 2027).\n\nBASE OFICIAL DE ADMISIONES:\n{chr(10).join(ctx_adm)}\n\n{memoria.obtener_resumen_cognitivo()}\n\nCONSULTA DEL ASPIRANTE:\n{pregunta_norm}"
@@ -1398,7 +1407,7 @@ REGLAS DE RESPUESTA OBLIGATORIAS:
 - NUNCA respondas con evasivas como "vaya a secretaría" sin explicar primero requisitos, plazos, porcentajes, pasos exactos y correo destinatario.
 - Ikiam NO dispone actualmente de residencias estudiantiles; acláralo si consultan sobre vivienda.
 - Sobre asistencia (Art. 87 RRA): el mínimo obligatorio es 70%. Si el estudiante tiene menos (ej. 65%), explica el riesgo de reprobación por inasistencias, el plazo improrrogable de 3 días hábiles para justificar si media enfermedad/calamidad, o el retiro extraordinario por fuerza mayor antes de finales.
-- Enlaza únicamente documentos existentes usando [Nombre](/documentos/NOMBRE_ARCHIVO) o portales reales verificados.
+- Enlaza únicamente documentos existentes usando [Visualizar PDF: Nombre](/documentos/NOMBRE_ARCHIVO) si es PDF o [Descargar Formato: Nombre](/documentos/NOMBRE_ARCHIVO) si es Word, o portales reales verificados. Si el estudiante pide ver o visualizar documentos oficiales, reglamentos o resoluciones, incluye siempre el enlace directo correspondiente.
 - Redacta exclusivamente en Markdown limpio (viñetas, listas numeradas, negritas y enlaces [texto](url) o correos directos); NO emitas etiquetas HTML crudas como <div>, <p>, <br> o <h3>.
 - PROHIBIDO incluir emojis, emoticones o iconos gráficos Unicode. Mantén un tono institucional formal."""
 
@@ -1416,7 +1425,20 @@ REDACTA UNA RESPUESTA CLARA, PRECISA Y ORIENTATIVA EN ESPAÑOL:"""
 
     ans_ai = sanitizar_salida_segura(_llamar_gemini(system_instruction_text, user_content_text) or '')
     if ans_ai:
-        ans_html = limpiar_formato_html(ans_ai) + generar_botones_relacionados(ctx["network"])
+        docs_extra_html = ""
+        pide_doc = any(k in pregunta_norm.lower() for k in ["pdf", "documento", "resolucion", "reglamento", "ver", "visualizar", "enlace", "norma", "formato"])
+        docs_para_mostrar = [d for d in ctx["docs"][:3] if d[0] in ARCHIVOS_REALES and d[0] not in ans_ai]
+        if docs_para_mostrar and pide_doc:
+            docs_extra_html = "<div style='margin-top:10px; padding:8px 10px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:6px;'>"
+            docs_extra_html += "<div style='font-size:11.5px; font-weight:700; color:#065f46; margin-bottom:5px;'>Documentos Oficiales Disponibles para Visualizar:</div>"
+            docs_extra_html += "<div style='display:flex; flex-direction:column; gap:4px;'>"
+            for d in docs_para_mostrar:
+                is_pdf = d[0].lower().endswith(".pdf")
+                lbl = f"Visualizar PDF: {d[1][:70]}" if is_pdf else f"Descargar Formato (.docx): {d[1][:70]}"
+                badge_tipo = "PDF en línea" if is_pdf else "Formato .docx"
+                docs_extra_html += f"<a href='/documentos/{d[0]}' target='_blank' rel='noopener noreferrer' style='display:inline-flex; align-items:center; justify-content:space-between; background:#ffffff; border:1px solid #86efac; color:#065f46; padding:5px 9px; border-radius:4px; font-size:11.5px; text-decoration:none; font-weight:600;'><span>{lbl}</span><span style='font-size:10px; background:#ecfdf5; color:#047857; padding:2px 5px; border-radius:3px;'>{badge_tipo}</span></a>"
+            docs_extra_html += "</div></div>"
+        ans_html = limpiar_formato_html(ans_ai) + docs_extra_html + generar_botones_relacionados(ctx["network"])
         _guardar_ultimas_opciones(memoria, ans_html)
         memoria.registrar_episodio(pregunta, ans_html)
         return ans_html, False
@@ -1438,11 +1460,13 @@ REDACTA UNA RESPUESTA CLARA, PRECISA Y ORIENTATIVA EN ESPAÑOL:"""
         docs_links = ""
         for d in ctx["docs"][:2]:
             if d[0] in ARCHIVOS_REALES:
-                docs_links += f"<li><a href='/documentos/{d[0]}' target='_blank' style='color:#0d5f3a; font-weight:bold;'>{d[1]}</a></li>"
+                is_pdf = d[0].lower().endswith(".pdf")
+                lbl = f"Visualizar PDF: {d[1]}" if is_pdf else f"Descargar Formato: {d[1]}"
+                docs_links += f"<li><a href='/documentos/{d[0]}' target='_blank' rel='noopener noreferrer' style='color:#0d5f3a; font-weight:bold;'>{lbl}</a></li>"
         fallback = f"<div style='border-left:3px solid #0d5f3a; padding-left:10px;'><div style='color:#0d5f3a; font-weight:700; font-size:13px; margin:0 0 5px;'>{r[0]}</div><p style='font-size:12px;'>{r[1]}</p><p style='font-size:12px;'><strong>Requisitos:</strong> {r[2]}</p>"
         if docs_links:
             fallback += f"<p style='font-size:12px;'><strong>Documentos disponibles:</strong></p><ul style='font-size:12px;'>{docs_links}</ul>"
-        fallback += f"<p style='font-size:12px;'><a href='{r[3]}' target='_blank' style='color:#0d5f3a; font-weight:bold;'>Ver fuente oficial en Ikiam</a></p></div>"
+        fallback += f"<p style='font-size:12px;'><a href='{r[3]}' target='_blank' rel='noopener noreferrer' style='color:#0d5f3a; font-weight:bold;'>Ver fuente oficial en Ikiam</a></p></div>"
         memoria.registrar_episodio(pregunta, fallback)
         return fallback, False
 

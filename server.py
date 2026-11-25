@@ -72,7 +72,7 @@ def health():
     return jsonify({
         "status": "healthy",
         "service": "ikiam-academic-chatbot",
-        "version": "2.2-budget-and-burst-shield"
+        "version": "2.3-pdf-inline-viewer"
     }), 200
 
 @app.route("/api/chat", methods=["POST", "OPTIONS"])
@@ -363,7 +363,15 @@ def download_documento(filename):
     safe_name = os.path.basename(filename)
     file_path = os.path.join(DOCS_DIR, safe_name)
     if os.path.exists(file_path):
-        return send_from_directory(DOCS_DIR, safe_name, as_attachment=True)
+        is_pdf = safe_name.lower().endswith(".pdf")
+        if is_pdf:
+            # Visualización inline directa en el navegador para PDFs
+            resp = make_response(send_from_directory(DOCS_DIR, safe_name, as_attachment=False, mimetype="application/pdf"))
+            resp.headers["Content-Type"] = "application/pdf"
+            resp.headers["Content-Disposition"] = f'inline; filename="{safe_name}"'
+            return resp
+        else:
+            return send_from_directory(DOCS_DIR, safe_name, as_attachment=True)
     return Response("Documento no encontrado en el repositorio oficial.", status=404, mimetype="text/plain; charset=utf-8")
 
 if __name__ == "__main__":
