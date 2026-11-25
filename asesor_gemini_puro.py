@@ -472,6 +472,14 @@ def es_pregunta_compleja_o_puntual(p_low: str) -> bool:
     return False
 
 
+def _stem_es(w: str) -> str:
+    w = w.lower().strip()
+    for end in ("ado", "ido", "ando", "iendo", "aron", "eron", "ar", "er", "ir", "as", "es", "os", "a", "e", "o"):
+        if len(w) > 4 and w.endswith(end):
+            return w[:-len(end)]
+    return w
+
+
 def evaluar_flujo_guiado(pregunta: str):
     """Detecta si una pregunta amplia corresponde a un flujo orientativo predeterminado."""
     p_low = pregunta.lower().strip()
@@ -488,16 +496,27 @@ def evaluar_flujo_guiado(pregunta: str):
     finally:
         conn.close()
 
+    p_words = set(re.findall(r"\w+", p_low))
+    p_stems = {_stem_es(w) for w in p_words}
+    greeting_stopwords = {"hola", "buenos", "dias", "tardes", "noches", "saludos", "buenas", "menu", "ayuda", "ayudame", "por", "favor", "de", "la", "el", "en", "un", "una", "al", "a"}
+
     for f_id, keywords in filas:
-        claves = [k.strip() for k in keywords.split(",") if k.strip()]
+        if f_id == "flujo_saludo_inicio":
+            # Si hay palabras sustantivas (no meros saludos), no capturar como menú de saludo
+            if not p_words.issubset(greeting_stopwords) and len(p_words - greeting_stopwords) >= 2:
+                continue
+
+        claves = [k.strip().lower() for k in keywords.split(",") if k.strip()]
         for c in claves:
-            # Coincidencia por frase o palabra completa usando límites de palabra
-            if len(c.split()) > 1:
-                if c in p_low:
-                    return render_flujo_por_id(f_id)
-            else:
-                if re.search(rf"\b{re.escape(c)}\b", p_low):
-                    return render_flujo_por_id(f_id)
+            # 1. Coincidencia directa de subcadena o palabra completa
+            if c in p_low:
+                return render_flujo_por_id(f_id)
+            # 2. Coincidencia lematizada por raíces de palabras
+            c_words = [w for w in re.findall(r"\w+", c) if w not in ("de", "la", "el", "en", "un", "una", "al", "por", "a", "los", "las")]
+            if c_words and all(_stem_es(w) in p_stems for w in c_words):
+                return render_flujo_por_id(f_id)
+            if len(c_words) == 1 and re.search(rf"\b{re.escape(c)}\b", p_low):
+                return render_flujo_por_id(f_id)
     return None
 
 
@@ -613,13 +632,31 @@ def buscar_contexto_multi_db(pregunta: str, codigo_carrera: str = None):
                 for t in terminos[:5]:
                     params.extend([f"%{t}%", f"%{t}%", f"%{t}%", f"%{t}%"])
                 cur.execute(
-                    f"SELECT codigo_caso, nombre_tramite, autoridad_destinataria, correo_destino, plazo_reglamentario, enlace_descarga FROM casos_tramite_red WHERE {likes} LIMIT 4",
+                    f"SELECT codigo_caso, nombre_tramite, autoridad_destinataria, correo_destino, plazo_reglamentario, enlace_descarga, categoria, descripcion_caso FROM casos_tramite_red WHERE {likes}",
                     params
                 )
-                for row in cur.fetchall():
-                    if row[0] not in vistos_cod and len(network_rows) < 4:
-                        network_rows.append(row)
-                        vistos_cod.add(row[0])
+                cands = cur.fetchall()
+                t_stems = {_stem_es(t) for t in terminos}
+                def _score_c(row):
+                    sc = 0
+                    tit = row[1].lower()
+                    cat = (row[6] or "").lower()
+                    desc = (row[7] or "").lower()
+                    for t in terminos:
+                        st = _stem_es(t)
+                        if t in tit or st in tit:
+                            sc += 10
+                        if t in cat or st in cat:
+                            sc += 5
+                        if t in desc or st in desc:
+                            sc += 2
+                    return sc
+                cands.sort(key=_score_c, reverse=True)
+                for row in cands:
+                    clean_row = row[:6]
+                    if clean_row[0] not in vistos_cod and len(network_rows) < 4:
+                        network_rows.append(clean_row)
+                        vistos_cod.add(clean_row[0])
         except Exception as e:
             print(f"Warn network query: {e}")
         finally:
