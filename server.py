@@ -23,37 +23,12 @@ from seguridad_ikiam import (
     validar_tamano_consulta,
     escapar_para_tabla,
     MENSAJE_BLOQUEO_SEGURIDAD,
+    verificar_limites_trafico,
+    obtener_estadisticas_presupuesto,
 )
 
 app = Flask(__name__, static_folder=None)
 register_whatsapp_routes(app)
-
-# Rate limiting segmentado por sesión + IP (permite redes NAT/campus compartidas sin bloquear estudiantes)
-SESSION_RATE_LIMITS = {}
-IP_RATE_LIMITS = {}
-RATE_LOCK = threading.Lock()
-MAX_SESSION_REQUESTS_PER_MINUTE = 30
-MAX_IP_REQUESTS_PER_MINUTE = 120
-WINDOW_SECONDS = 60
-
-def is_rate_limited(client_ip: str, session_id: str) -> bool:
-    now = time.time()
-    with RATE_LOCK:
-        # 1. Comprobar sesión individual
-        s_times = SESSION_RATE_LIMITS.setdefault(session_id, [])
-        s_times[:] = [t for t in s_times if now - t < WINDOW_SECONDS]
-        if len(s_times) >= MAX_SESSION_REQUESTS_PER_MINUTE:
-            return True
-
-        # 2. Comprobar IP global (NAT campus)
-        ip_times = IP_RATE_LIMITS.setdefault(client_ip, [])
-        ip_times[:] = [t for t in ip_times if now - t < WINDOW_SECONDS]
-        if len(ip_times) >= MAX_IP_REQUESTS_PER_MINUTE:
-            return True
-
-        s_times.append(now)
-        ip_times.append(now)
-        return False
 
 def verificar_admin_auth(req) -> bool:
     """Verifica si la petición cuenta con el token de administración válido."""
@@ -97,7 +72,7 @@ def health():
     return jsonify({
         "status": "healthy",
         "service": "ikiam-academic-chatbot",
-        "version": "2.1-security-hardened"
+        "version": "2.2-budget-and-burst-shield"
     }), 200
 
 @app.route("/api/chat", methods=["POST", "OPTIONS"])
@@ -110,13 +85,19 @@ def chat():
     session_id_raw = str(data.get("sessionId", "web_default_session")).strip()
     # Sanitizar session_id para evitar caracteres de control o inyecciones de ruta
     session_id = "".join(c for c in session_id_raw if c.isalnum() or c in "-_")[:64] or "web_default_session"
+    client_id_raw = str(data.get("clientId", "")).strip()
+    client_id = "".join(c for c in client_id_raw if c.isalnum() or c in "-_")[:64]
+    
     scope_raw = str(data.get("scope", "academico")).strip().lower()
     scope = "admisiones" if scope_raw in ("admisiones", "admision") else "academico"
 
     client_ip = request.headers.get("X-Forwarded-For", request.remote_addr or "unknown").split(",")[0].strip()
-    if is_rate_limited(client_ip, session_id):
+    
+    # 1. Control de tráfico multicapa (Anti-Ráfaga + Cuota Horaria por IP y Dispositivo)
+    permitido, err_trafico = verificar_limites_trafico(client_ip, client_id)
+    if not permitido:
         return jsonify({
-            "reply": "Ha alcanzado el límite temporal de consultas por minuto. Por favor espere un momento antes de enviar otra consulta.",
+            "reply": err_trafico,
             "reset": False,
         }), 200
 
@@ -124,7 +105,7 @@ def chat():
         prompt_vacio = "¡Hola! Escribe tu consulta sobre el proceso de admisión o elige una de las opciones." if scope == "admisiones" else "¡Hola! Escribe tu consulta sobre trámites académicos de Ikiam o elige una opción."
         return jsonify({"reply": prompt_vacio, "reset": False}), 200
 
-    # Validación de seguridad: longitud y caracteres de control
+    # 2. Validación de seguridad: longitud y caracteres de control
     valido, err_msg = validar_tamano_consulta(msg)
     if not valido:
         return jsonify({"reply": err_msg, "reset": False}), 200
@@ -237,6 +218,33 @@ def panel_auditoria_html():
     if not verificar_admin_auth(request):
         return Response(LOGIN_HTML_TEMPLATE.replace("__ERROR_MSG__", ""), mimetype="text/html; charset=utf-8"), 401
 
+    # Estadísticas del Token Budget Guard
+    stats_b = obtener_estadisticas_presupuesto()
+    tokens_usados = f"{stats_b['tokens_consumidos']:,}"
+    tokens_limite = f"{stats_b['limite_diario']:,}"
+    pct_usado = stats_b['porcentaje_usado']
+    color_motor = "#b45309" if stats_b['modo_resguardo_activo'] else "#0d5f3a"
+    estado_motor = "Modo Resguardo RAG Determinista (Zero-Token)" if stats_b['modo_resguardo_activo'] else "Operativo Normal (IA Híbrida)"
+    consultas_ia = stats_b['consultas_ia']
+    consultas_rag = stats_b['consultas_rag_puro']
+
+    banner_presupuesto = f"""
+    <div style="display:flex; gap:14px; margin-bottom:16px;">
+        <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:6px; padding:12px 16px; flex:1; border-left:3px solid #0d5f3a;">
+            <div style="font-size:10.5px; color:#64748b; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">Presupuesto Diario de Tokens</div>
+            <div style="font-size:15px; font-weight:700; color:#0d5f3a; margin-top:4px;">{tokens_usados} / {tokens_limite} ({pct_usado}%)</div>
+        </div>
+        <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:6px; padding:12px 16px; flex:1; border-left:3px solid {color_motor};">
+            <div style="font-size:10.5px; color:#64748b; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">Estado del Motor de Inferencia</div>
+            <div style="font-size:14px; font-weight:700; color:{color_motor}; margin-top:4px;">{estado_motor}</div>
+        </div>
+        <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:6px; padding:12px 16px; flex:1; border-left:3px solid #3b82f6;">
+            <div style="font-size:10.5px; color:#64748b; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">Atención de Consultas Hoy</div>
+            <div style="font-size:15px; font-weight:700; color:#1e293b; margin-top:4px;">IA: {consultas_ia} | RAG Cero-Tokens: {consultas_rag}</div>
+        </div>
+    </div>
+    """
+
     consultas = exportar_json_consultas(limite=200)
     filas_html = ""
     for c in consultas:
@@ -295,6 +303,8 @@ def panel_auditoria_html():
         </div>
     </div>
 
+    __BANNER_PRESUPUESTO__
+
     <table>
         <thead>
             <tr>
@@ -339,7 +349,7 @@ def panel_auditoria_html():
 </body>
 </html>"""
     filas_finales = filas_html or '<tr><td colspan="7" style="text-align:center; padding:24px; color:#94a3b8; font-size:12px;">No hay consultas registradas aún. Formule preguntas en el chat para visualizarlas aquí.</td></tr>'
-    html = plantilla.replace("__FILAS__", filas_finales)
+    html = plantilla.replace("__BANNER_PRESUPUESTO__", banner_presupuesto).replace("__FILAS__", filas_finales)
     return Response(html, mimetype="text/html; charset=utf-8")
 
 @app.route("/admin/logout", methods=["GET"])
@@ -357,5 +367,6 @@ def download_documento(filename):
     return Response("Documento no encontrado en el repositorio oficial.", status=404, mimetype="text/plain; charset=utf-8")
 
 if __name__ == "__main__":
-    print(f"Servidor Ikiam Academic Chatbot activo en http://0.0.0.0:{PORT}")
-    app.run(host="0.0.0.0", port=PORT)
+    host = "0.0.0.0" if os.environ.get("RENDER") else os.environ.get("HOST", "127.0.0.1")
+    print(f"Servidor Ikiam Academic Chatbot activo en http://{host}:{PORT}")
+    app.run(host=host, port=PORT)

@@ -2148,6 +2148,15 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
     enviarConsultaAcademica();
   }
 
+  function _obtenerClientIdPersistente() {
+    var cid = localStorage.getItem('ikiam_device_cid');
+    if (!cid || cid.length < 16) {
+      cid = 'dev_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now().toString(36);
+      localStorage.setItem('ikiam_device_cid', cid);
+    }
+    return cid;
+  }
+
   function _nuevoSidAcademico() {
     var nuevo = 'usr_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
     sessionStorage.setItem('ikiam_user_sid', nuevo);
@@ -2167,7 +2176,7 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
       var res = await fetch(window.location.origin + '/api/chat', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ message: 'reiniciar', sessionId: sidAnterior, scope: 'academico' })
+        body: JSON.stringify({ message: 'reiniciar', sessionId: sidAnterior, clientId: _obtenerClientIdPersistente(), scope: 'academico' })
       });
       var data = await res.json();
       _nuevoSidAcademico();
@@ -2205,7 +2214,7 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
       var res = await fetch(endpoint, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ message: codigoCaso, sessionId: sid, scope: 'academico' })
+        body: JSON.stringify({ message: codigoCaso, sessionId: sid, clientId: _obtenerClientIdPersistente(), scope: 'academico' })
       });
       var data = await res.json();
       var reply = data.reply ? data.reply : 'No se pudo cargar la información del trámite seleccionado.';
@@ -2247,7 +2256,7 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
       var res = await fetch(endpoint, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ message: texto, sessionId: sid, scope: 'academico' })
+        body: JSON.stringify({ message: texto, sessionId: sid, clientId: _obtenerClientIdPersistente(), scope: 'academico' })
       });
       var data = await res.json();
       var reply = data.reply ? data.reply : 'Disculpe, no se pudo procesar la consulta en este momento.';

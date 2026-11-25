@@ -1,4 +1,10 @@
-from seguridad_ikiam import detectar_intento_inyeccion, sanitizar_salida_segura, MENSAJE_BLOQUEO_SEGURIDAD
+from seguridad_ikiam import (
+    detectar_intento_inyeccion,
+    sanitizar_salida_segura,
+    MENSAJE_BLOQUEO_SEGURIDAD,
+    presupuesto_tokens_agotado,
+    registrar_consumo_tokens,
+)
 # -*- coding: utf-8 -*-
 """
 Motor Conversacional Híbrido Multi-DB para la Universidad Regional Amazónica Ikiam.
@@ -782,9 +788,13 @@ def generar_botones_relacionados(network_rows):
 
 
 def _llamar_gemini(system_instruction_text: str, user_content_text: str):
-    """Ejecuta llamada controlada a Gemini dentro de un presupuesto total de 18s."""
+    """Ejecuta llamada controlada a Gemini dentro de un presupuesto total de 18s y límite estricto de tokens."""
     if not GEMINI_KEY:
         return None
+    # Token Budget Guard: si el presupuesto diario está agotado, conmuta inmediatamente a RAG determinista
+    if presupuesto_tokens_agotado():
+        return None
+
     deadline = time.time() + 18.0
     for model_name in MODELS_TO_TRY:
         rem = deadline - time.time()
@@ -794,7 +804,7 @@ def _llamar_gemini(system_instruction_text: str, user_content_text: str):
         payload = {
             "system_instruction": {"parts": [{"text": system_instruction_text}]},
             "contents": [{"role": "user", "parts": [{"text": user_content_text}]}],
-            "generationConfig": {"temperature": 0.2, "maxOutputTokens": 2800},
+            "generationConfig": {"temperature": 0.2, "maxOutputTokens": 600},
         }
         try:
             req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json"})
@@ -805,6 +815,9 @@ def _llamar_gemini(system_instruction_text: str, user_content_text: str):
                 if any(bad in ans.lower() for bad in ["system_instruction", "format/links", "clean markdown", "no evasives", "required list", "reglas de respuesta obligatorias"]):
                     continue
                 if len(ans) > 25:
+                    # Registrar consumo aproximado de tokens (prompt + output)
+                    tokens_est = (len(system_instruction_text) + len(user_content_text) + len(ans)) // 4
+                    registrar_consumo_tokens(tokens_est, es_ia=True)
                     return ans
         except Exception:
             continue
@@ -1088,6 +1101,7 @@ REGLAS ESTRICTAS:
         memoria.registrar_episodio(pregunta_orig, full_html)
         return full_html, False
 
+    registrar_consumo_tokens(0, es_ia=False)
     if faq_hits:
         ans_fb = _render_faq_admisiones(faq_hits[0][0])
         if ans_fb:
@@ -1407,6 +1421,7 @@ REDACTA UNA RESPUESTA CLARA, PRECISA Y ORIENTATIVA EN ESPAÑOL:"""
         memoria.registrar_episodio(pregunta, ans_html)
         return ans_html, False
 
+    registrar_consumo_tokens(0, es_ia=False)
     # Fallback determinista rico apoyado en las 4 DBs (funciona incluso sin API Key o ante caída externa)
     if ctx["network"]:
         res_caso = consultar_caso_red(ctx["network"][0][0], cod_carr_actual)
