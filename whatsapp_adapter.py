@@ -127,7 +127,13 @@ def _truncate_clean(text: str, limit: int) -> str:
 
 
 def _post_graph_api(payload: Dict[str, Any]) -> bool:
-    """Envía un payload JSON a Meta WhatsApp Graph API."""
+    """Envía un payload JSON a Meta WhatsApp Graph API (con interruptor de seguridad de pruebas)."""
+    # Salvaguarda estricta: si el envío está deshabilitado por modo prueba, nunca despacha a la red externa
+    modo_prueba = os.environ.get("DISABLE_OUTBOUND_MESSAGES", "true").lower() in ("true", "1", "yes")
+    if modo_prueba:
+        logger.info(f"[MODO PRUEBA - ENVÍO DESHABILITADO] Despacho saliente suprimido para {payload.get('to')}")
+        return True
+
     phone_id = _cfg("WHATSAPP_PHONE_NUMBER_ID")
     token = _cfg("WHATSAPP_TOKEN")
     if not phone_id or not token:

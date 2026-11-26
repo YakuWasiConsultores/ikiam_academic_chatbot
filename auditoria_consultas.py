@@ -42,6 +42,10 @@ def inicializar_db_auditoria():
 
 def _enviar_webhook_remoto(payload: dict):
     """Envía la consulta en segundo plano a Google Sheets / Drive webhook si está configurado."""
+    # En modo de prueba o con envío deshabilitado, se bloquea cualquier salida externa
+    if os.environ.get("DISABLE_OUTBOUND_MESSAGES", "true").lower() in ("true", "1", "yes"):
+        return
+
     webhook_url = os.environ.get("WEBHOOK_GOOGLE_SHEETS_URL", "").strip()
     if not webhook_url:
         return
