@@ -1,0 +1,20 @@
+[Unit]
+Description=Ikiam WhatsApp Gateway Bridge (Baileys)
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/ikiam_academic_chatbot/whatsapp_bridge
+Environment=NODE_ENV=production
+Environment=PORT=3001
+Environment=API_ENDPOINT=https://ikiam-academic-chatbot.onrender.com/api/chat
+ExecStart=/usr/bin/node bridge.js
+Restart=always
+RestartSec=5
+
+# Límites y seguridad
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

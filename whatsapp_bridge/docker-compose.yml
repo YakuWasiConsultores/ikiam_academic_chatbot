@@ -1,0 +1,13 @@
+services:
+  whatsapp-bridge:
+    build: .
+    container_name: ikiam-whatsapp-bridge
+    restart: always
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - API_ENDPOINT=https://ikiam-academic-chatbot.onrender.com/api/chat
+    volumes:
+      # Persistencia de credenciales de sesión WhatsApp
+      - ./auth_info:/app/auth_info
