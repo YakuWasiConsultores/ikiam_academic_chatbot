@@ -12,10 +12,12 @@ DB_AUDITORIA = os.path.join(BASE_DIR, "consultas_auditoria.db")
 _LOCK = threading.Lock()
 
 def inicializar_db_auditoria():
-    """Crea la tabla de consultas si no existe."""
+    """Crea la tabla de consultas si no existe y habilita modo WAL para alta concurrencia."""
     with _LOCK:
-        conn = sqlite3.connect(DB_AUDITORIA)
+        conn = sqlite3.connect(DB_AUDITORIA, timeout=20.0)
         try:
+            conn.execute("PRAGMA journal_mode=WAL;")
+            conn.execute("PRAGMA synchronous=NORMAL;")
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS consultas_historial (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -54,6 +56,13 @@ def _enviar_webhook_remoto(payload: dict):
     except Exception:
         pass
 
+def sanitizar_celda_csv(valor) -> str:
+    """Mitiga CSV / Formula Injection (CWE-1236) en Microsoft Excel."""
+    s = str(valor or "")
+    if s and s[0] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + s
+    return s
+
 def registrar_consulta(scope: str, session_id: str, client_ip: str, pregunta: str, respuesta: str, fue_reinicio: bool = False, tipo_fuente: str = "sistema"):
     """Registra una interacción de forma segura en SQLite y dispara webhook si existe."""
     # Hora local de Ecuador (UTC-5)
@@ -68,7 +77,7 @@ def registrar_consulta(scope: str, session_id: str, client_ip: str, pregunta: st
     record_id = None
     with _LOCK:
         try:
-            conn = sqlite3.connect(DB_AUDITORIA)
+            conn = sqlite3.connect(DB_AUDITORIA, timeout=20.0)
             cur = conn.cursor()
             cur.execute("""
                 INSERT INTO consultas_historial 
@@ -95,9 +104,9 @@ def registrar_consulta(scope: str, session_id: str, client_ip: str, pregunta: st
     t.start()
 
 def exportar_csv_consultas(scope: str = None, limite: int = 5000) -> str:
-    """Exporta las consultas a formato CSV compatible con Microsoft Excel (UTF-8 con BOM)."""
+    """Exporta las consultas a formato CSV compatible con Microsoft Excel (UTF-8 con BOM y sanitización anti-fórmulas)."""
     with _LOCK:
-        conn = sqlite3.connect(DB_AUDITORIA)
+        conn = sqlite3.connect(DB_AUDITORIA, timeout=20.0)
         conn.row_factory = sqlite3.Row
         cur = conn.cursor()
         if scope:
@@ -136,14 +145,14 @@ def exportar_csv_consultas(scope: str = None, limite: int = 5000) -> str:
     for row in filas:
         writer.writerow([
             row["id"],
-            row["timestamp"],
-            row["scope"],
-            row["session_id"],
-            row["pregunta_usuario"],
-            row["respuesta_sistema"],
-            row["respuesta_esperada"] or "",
-            row["estado_revision"] or "pendiente",
-            row["notas_auditoria"] or ""
+            sanitizar_celda_csv(row["timestamp"]),
+            sanitizar_celda_csv(row["scope"]),
+            sanitizar_celda_csv(row["session_id"]),
+            sanitizar_celda_csv(row["pregunta_usuario"]),
+            sanitizar_celda_csv(row["respuesta_sistema"]),
+            sanitizar_celda_csv(row["respuesta_esperada"] or ""),
+            sanitizar_celda_csv(row["estado_revision"] or "pendiente"),
+            sanitizar_celda_csv(row["notas_auditoria"] or "")
         ])
 
     # Devolver con BOM UTF-8 para apertura directa en Excel sin caracteres rotos
@@ -152,7 +161,7 @@ def exportar_csv_consultas(scope: str = None, limite: int = 5000) -> str:
 def exportar_json_consultas(scope: str = None, limite: int = 5000):
     """Devuelve las consultas en formato JSON para integraciones."""
     with _LOCK:
-        conn = sqlite3.connect(DB_AUDITORIA)
+        conn = sqlite3.connect(DB_AUDITORIA, timeout=20.0)
         conn.row_factory = sqlite3.Row
         cur = conn.cursor()
         if scope:
@@ -166,7 +175,7 @@ def exportar_json_consultas(scope: str = None, limite: int = 5000):
 def actualizar_feedback_humano(consulta_id: int, respuesta_esperada: str, estado: str = "revisado", notas: str = ""):
     """Actualiza una consulta con la respuesta humana correcta."""
     with _LOCK:
-        conn = sqlite3.connect(DB_AUDITORIA)
+        conn = sqlite3.connect(DB_AUDITORIA, timeout=20.0)
         cur = conn.cursor()
         cur.execute("""
             UPDATE consultas_historial

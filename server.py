@@ -46,10 +46,19 @@ def verificar_admin_auth(req) -> bool:
     return bool(token and token == ADMIN_TOKEN)
 
 @app.after_request
-def add_cors_headers(response):
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, X-Admin-Token"
-    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+def aplicar_cabeceras_seguridad(response):
+    # Cabeceras de seguridad globales OWASP
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+
+    # CORS restringido: sólo para endpoints públicos, NUNCA para rutas administrativas
+    path = request.path
+    es_publico = not (path.startswith("/admin") or path.startswith("/api/consultas"))
+    if es_publico:
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, X-Admin-Token"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
     return response
 
 @app.route("/", methods=["GET"])
@@ -77,7 +86,7 @@ def health():
     return jsonify({
         "status": "healthy",
         "service": "ikiam-academic-chatbot",
-        "version": "2.4-hardened-shield"
+        "version": "2.5-enterprise-hardened"
     }), 200
 
 @app.route("/api/chat", methods=["POST", "OPTIONS"])
@@ -173,6 +182,9 @@ def feedback_consulta_route():
 
     if not c_id or not resp_esperada:
         return jsonify({"error": "Parámetros 'id' y 'respuesta_esperada' requeridos"}), 400
+
+    if len(resp_esperada) > 2000 or "\x00" in resp_esperada:
+        return jsonify({"error": "Longitud de respuesta esperada excedida (máximo 2000 caracteres)."}), 400
 
     actualizar_feedback_humano(int(c_id), resp_esperada, estado=estado, notas=notas)
     return jsonify({"status": "ok", "id": c_id}), 200

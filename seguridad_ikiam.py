@@ -237,16 +237,51 @@ def limpiar_intentos_admin(ip: str):
 def verificar_bloqueo_fuerza_bruta_admin(ip: str) -> (bool, int):
     """
     Verifica si una IP está temporalmente bloqueada por exceso de intentos administrativos fallidos.
+    Purga automáticamente registros expirados para evitar fugas de memoria.
     Retorna (permitido: bool, segundos_restantes: int).
     """
     now = time.time()
     with _ADMIN_LOCK:
+        # Purgar claves expiradas para prevenir fugas de memoria
+        for k in list(_ADMIN_FAILED_ATTEMPTS.keys()):
+            _ADMIN_FAILED_ATTEMPTS[k] = [t for t in _ADMIN_FAILED_ATTEMPTS[k] if now - t < ADMIN_LOCKOUT_WINDOW_SECONDS]
+            if not _ADMIN_FAILED_ATTEMPTS[k]:
+                _ADMIN_FAILED_ATTEMPTS.pop(k, None)
+
         intentos = _ADMIN_FAILED_ATTEMPTS.get(ip, [])
-        intentos[:] = [t for t in intentos if now - t < ADMIN_LOCKOUT_WINDOW_SECONDS]
         if len(intentos) >= MAX_ADMIN_FAILED_ATTEMPTS:
             tiempo_restante = int(ADMIN_LOCKOUT_WINDOW_SECONDS - (now - intentos[0]))
             return False, max(1, tiempo_restante)
         return True, 0
+
+_ULTIMA_DEPURACION_RATE = 0.0
+
+def _depurar_estructuras_viejas(now: float):
+    """Evita fugas de memoria purgando claves expiradas de los diccionarios de control de tasa."""
+    global _ULTIMA_DEPURACION_RATE
+    if now - _ULTIMA_DEPURACION_RATE < 60.0:
+        return
+    _ULTIMA_DEPURACION_RATE = now
+
+    for k in list(_IP_BURST.keys()):
+        _IP_BURST[k] = [t for t in _IP_BURST[k] if now - t < BURST_WINDOW_SECONDS]
+        if not _IP_BURST[k]:
+            _IP_BURST.pop(k, None)
+
+    for k in list(_CLIENT_BURST.keys()):
+        _CLIENT_BURST[k] = [t for t in _CLIENT_BURST[k] if now - t < BURST_WINDOW_SECONDS]
+        if not _CLIENT_BURST[k]:
+            _CLIENT_BURST.pop(k, None)
+
+    for k in list(_IP_HOURLY.keys()):
+        _IP_HOURLY[k] = [t for t in _IP_HOURLY[k] if now - t < HOURLY_WINDOW_SECONDS]
+        if not _IP_HOURLY[k]:
+            _IP_HOURLY.pop(k, None)
+
+    for k in list(_CLIENT_HOURLY.keys()):
+        _CLIENT_HOURLY[k] = [t for t in _CLIENT_HOURLY[k] if now - t < HOURLY_WINDOW_SECONDS]
+        if not _CLIENT_HOURLY[k]:
+            _CLIENT_HOURLY.pop(k, None)
 
 def es_ip_campus(ip: str) -> bool:
     """Determina si una dirección IP pertenece a la red de campus de Ikiam o subredes autorizadas."""
@@ -265,6 +300,8 @@ def verificar_limites_trafico(client_ip: str, client_id: str = "") -> (bool, str
     """
     now = time.time()
     with _RATE_LOCK:
+        _depurar_estructuras_viejas(now)
+
         # 1. Control Anti-Ráfaga por Dispositivo (siempre presente por huella sintética)
         if client_id and len(client_id) >= 8:
             cb_times = _CLIENT_BURST.setdefault(client_id, [])
