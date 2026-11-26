@@ -2092,11 +2092,11 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
 <div id="widget-academico-window">
   <div id="widget-academico-header">
     <div>
-      <h4>Dirección Académica - Ikiam</h4>
-      <p>Red de Procesos, Facultades y Normativa</p>
+      <h4>Procesos Académicos — Ikiam</h4>
+      <p>Dirección Académica y Trámites de Estudiantes</p>
     </div>
     <div style="display:flex; align-items:center; gap:6px;">
-      <a href="/admisiones" title="Ir a Admisiones Ikiam (1PA 2027)" style="background:rgba(255,255,255,0.16); color:#ffffff; text-decoration:none; border:1px solid rgba(255,255,255,0.35); border-radius:4px; padding:3px 7px; font-size:10px; font-weight:600;">Admisiones</a>
+      <a href="/admisiones" title="Ir a Chat de Admisiones Ikiam (1PA 2027)" style="background:rgba(255,255,255,0.16); color:#ffffff; text-decoration:none; border:1px solid rgba(255,255,255,0.35); border-radius:4px; padding:3px 7px; font-size:10px; font-weight:600;">Admisiones</a>
       <button type="button" onclick="reiniciarChatWidget()" title="Reiniciar conversación y borrar memoria" style="background:rgba(255,255,255,0.16); color:#ffffff; border:1px solid rgba(255,255,255,0.35); border-radius:4px; padding:3px 7px; font-size:10px; font-weight:600; cursor:pointer;">Nuevo chat</button>
       <span onclick="toggleAcademicoChat()" style="cursor:pointer; font-size:16px; line-height:1; margin-left:2px;">&times;</span>
     </div>
@@ -2105,21 +2105,21 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
     <div class="msg-item msg-bot" style="border-left: 3px solid #0d5f3a; padding: 10px 12px;">
       <div style="display:inline-flex; align-items:center; gap:5px; background:#eef7f2; color:#0d5f3a; font-weight:700; font-size:10.5px; padding:2px 8px; border-radius:10px; margin-bottom:6px;">
         <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#22c55e;"></span>
-        Dirección Académica Ikiam
+        Dirección Académica — Procesos Académicos
       </div>
       <p style="font-size:12px; margin:0 0 5px; color:#1e293b; line-height:1.45;">
-        <strong>¡Hola! Qué gusto saludarte.</strong> Te damos la bienvenida a la Dirección Académica. Te guiamos en tus trámites universitarios, normativa y contactos oficiales sin complicaciones.
+        <strong>¡Hola! Te damos la bienvenida a Procesos Académicos.</strong> Orientación reglamentaria sobre cambio de carrera, cambio de IES, reingresos, matrículas y formatos oficiales de Ikiam.
       </p>
-      <p style="font-size:11.5px; color:#64748b; margin:0 0 8px;">
-        Escribe tu consulta o selecciona un trámite frecuente:
+      <p style="font-size:11px; color:#64748b; margin:0 0 8px;">
+        Fuente oficial: <a href="https://www.ikiam.edu.ec/index.php/procesos-academicos/" target="_blank" style="color:#0d5f3a; text-decoration:underline;">ikiam.edu.ec/procesos-academicos</a>
       </p>
       <div style="display:flex; flex-wrap:wrap; gap:5px;">
-        <span class="chip-btn" onclick="seleccionarOpcionCaso('flujo:flujo_retiro', 'Retiro de asignatura')">Retiros y matrícula</span>
-        <span class="chip-btn" onclick="seleccionarOpcionCaso('flujo:flujo_faltas', 'Justificar inasistencias')">Justificar faltas</span>
-        <span class="chip-btn" onclick="seleccionarOpcionCaso('flujo:flujo_practicas', 'Prácticas preprofesionales')">Prácticas preprofesionales</span>
-        <span class="chip-btn" onclick="seleccionarOpcionCaso('flujo:flujo_cambio_carrera', 'Cambio de carrera')">Cambio de carrera</span>
-        <span class="chip-btn" onclick="seleccionarOpcionCaso('flujo:flujo_becas', 'Becas y bienestar')">Becas y bienestar</span>
-        <span class="chip-btn" onclick="seleccionarOpcionCaso('selector:facultades', 'Directorio de Facultades')">Directorio por Facultad</span>
+        <span class="chip-btn" onclick="seleccionarOpcionCaso('caso:cambio_carrera_interno', 'Cambio de carrera interno')">Cambio de carrera interno</span>
+        <span class="chip-btn" onclick="seleccionarOpcionCaso('caso:ingreso_homologacion_externa', 'Cambio de universidad (IES)')">Cambio de universidad (IES)</span>
+        <span class="chip-btn" onclick="seleccionarOpcionCaso('caso:ingreso_reingreso', 'Solicitud de reingreso')">Reingreso a la carrera</span>
+        <span class="chip-btn" onclick="seleccionarOpcionCaso('¿Dónde descargo los formatos oficiales de solicitud de la Dirección Académica?', 'Formatos oficiales')">Formatos descargables</span>
+        <span class="chip-btn" onclick="seleccionarOpcionCaso('caso:retiro_segunda_matricula', 'Tercera matrícula y retiros')">Tercera matrícula y retiros</span>
+        <span class="chip-btn" onclick="seleccionarOpcionCaso('caso:justificacion_salud', 'Justificar inasistencias')">Justificar inasistencias</span>
       </div>
     </div>
   </div>>

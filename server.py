@@ -63,13 +63,15 @@ def aplicar_cabeceras_seguridad(response):
 
 @app.route("/", methods=["GET"])
 @app.route("/portal", methods=["GET"])
+@app.route("/procesos-academicos", methods=["GET"])
+@app.route("/procesos-academicos/", methods=["GET"])
 def home():
     index_path = os.path.join(BASE_DIR, "index.html")
     if os.path.exists(index_path):
         with open(index_path, "r", encoding="utf-8") as f:
             html = f.read()
         return Response(html, mimetype="text/html; charset=utf-8")
-    return Response("<h1>Portal Académico Ikiam</h1>", mimetype="text/html; charset=utf-8")
+    return Response("<h1>Portal Procesos Académicos Ikiam</h1>", mimetype="text/html; charset=utf-8")
 
 @app.route("/admisiones", methods=["GET"])
 @app.route("/admisiones/", methods=["GET"])
@@ -119,7 +121,7 @@ def chat():
         }), 200
 
     if not msg:
-        prompt_vacio = "¡Hola! Escribe tu consulta sobre el proceso de admisión o elige una de las opciones." if scope == "admisiones" else "¡Hola! Escribe tu consulta sobre trámites académicos de Ikiam o elige una opción."
+        prompt_vacio = "¡Hola! Escribe tu consulta sobre el proceso de admisión 1PA 2027 o elige una de las opciones." if scope == "admisiones" else "¡Hola! Escribe tu consulta sobre trámites de la Dirección Académica (cambio de carrera, cambio de IES, reingresos o normativa) o elige una opción."
         return jsonify({"reply": prompt_vacio, "reset": False}), 200
 
     # 2. Validación de seguridad: longitud y caracteres de control

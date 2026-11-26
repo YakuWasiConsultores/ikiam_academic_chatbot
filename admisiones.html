@@ -2564,11 +2564,11 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
 <div id="widget-academico-window">
   <div id="widget-academico-header">
     <div>
-      <h4>Admisiones Ikiam - 1PA 2027</h4>
-      <p>Asistente Exclusivo de Nuevo Ingreso</p>
+      <h4>Admisiones Ikiam — 1PA 2027</h4>
+      <p>Asistente Exclusivo para Aspirantes y Postulantes</p>
     </div>
     <div style="display:flex; align-items:center; gap:6px;">
-      <a href="/" title="Ir a Procesos Académicos" style="background:rgba(255,255,255,0.16); color:#ffffff; text-decoration:none; border:1px solid rgba(255,255,255,0.35); border-radius:4px; padding:3px 7px; font-size:10px; font-weight:600;">Académico</a>
+      <a href="/procesos-academicos" title="Ir a Chat de Procesos Académicos (Dirección Académica)" style="background:rgba(255,255,255,0.16); color:#ffffff; text-decoration:none; border:1px solid rgba(255,255,255,0.35); border-radius:4px; padding:3px 7px; font-size:10px; font-weight:600;">Académico</a>
       <button type="button" onclick="reiniciarChatAdmisiones()" title="Reiniciar conversación y borrar memoria" style="background:rgba(255,255,255,0.16); color:#ffffff; border:1px solid rgba(255,255,255,0.35); border-radius:4px; padding:3px 7px; font-size:10px; font-weight:600; cursor:pointer;">Nuevo chat</button>
       <span onclick="toggleAdmisionesChat()" style="cursor:pointer; font-size:16px; line-height:1; margin-left:2px;">&times;</span>
     </div>
@@ -2577,20 +2577,21 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
     <div class="msg-item msg-bot" style="border-left: 3px solid #0d5f3a; padding: 10px 12px;">
       <div style="display:inline-flex; align-items:center; gap:5px; background:#eef7f2; color:#0d5f3a; font-weight:700; font-size:10.5px; padding:2px 8px; border-radius:10px; margin-bottom:6px;">
         <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#22c55e;"></span>
-        Admisiones Oficial 1PA 2027
+        Oficina de Admisiones — Destino Ikiam 1PA 2027
       </div>
       <p style="font-size:12px; margin:0 0 5px; color:#1e293b; line-height:1.45;">
-        <strong>¡Hola! Qué gusto saludarte.</strong> Te damos una cordial bienvenida a Ikiam. Estamos listos para orientarte paso a paso en tu proceso de admisión.
+        <strong>¡Hola! Te damos la bienvenida a Admisiones Ikiam.</strong> Orientación oficial para aspirantes sobre el periodo 1PA 2027: Registro Nacional SENESCYT, inscripciones, examen de admisión, oferta de carreras y cupos.
       </p>
-      <p style="font-size:11.5px; color:#64748b; margin:0 0 8px;">
-        Escribe cualquier consulta o pulsa un tema frecuente:
+      <p style="font-size:11px; color:#64748b; margin:0 0 8px;">
+        Fuente oficial: <a href="https://www.ikiam.edu.ec/index.php/admisiones/" target="_blank" style="color:#0d5f3a; text-decoration:underline;">ikiam.edu.ec/admisiones</a>
       </p>
       <div style="display:flex; flex-wrap:wrap; gap:5px;">
         <span class="chip-btn" onclick="consultarChipAdmisiones('Cronograma oficial del proceso 1PA 2027')">Cronograma 1PA 2027</span>
+        <span class="chip-btn" onclick="consultarChipAdmisiones('Registro Nacional Senescyt fechas y pasos')">Registro Nacional</span>
+        <span class="chip-btn" onclick="consultarChipAdmisiones('Inscripciones en eval.ikiam.edu.ec y simulador del examen')">Inscripción y simulador</span>
         <span class="chip-btn" onclick="consultarChipAdmisiones('Oferta de carreras y puntajes referenciales')">Carreras y puntajes</span>
-        <span class="chip-btn" onclick="consultarChipAdmisiones('Simulador de examen temarios y fechas')">Examen y simulador</span>
-        <span class="chip-btn" onclick="consultarChipAdmisiones('Registro Nacional Senescyt e inscripción')">Inscripción y registro</span>
         <span class="chip-btn" onclick="consultarChipAdmisiones('Costos, gratuidad y residencias en Ikiam')">Costos y gratuidad</span>
+        <span class="chip-btn" onclick="consultarChipAdmisiones('Contacto oficial oficina de admisiones y teléfono')">Contacto Admisiones</span>
       </div>
     </div>
   </div>
