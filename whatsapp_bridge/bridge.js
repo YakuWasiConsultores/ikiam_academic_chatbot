@@ -20,6 +20,24 @@ let connectedUser = null;
 
 // Mapa de sesión en memoria: remoteJid -> { scope, sid, waitingHuman }
 const userSessions = new Map();
+// Registro de IDs de mensajes enviados por el bot para evitar bucles infinitos en chat con uno mismo
+const botSentWamids = new Set();
+
+async function enviarMensajeBot(sock, remoteJid, content) {
+  try {
+    const sent = await sock.sendMessage(remoteJid, content);
+    if (sent?.key?.id) {
+      botSentWamids.add(sent.key.id);
+      if (botSentWamids.size > 2000) {
+        const firstKey = botSentWamids.values().next().value;
+        botSentWamids.delete(firstKey);
+      }
+    }
+    return sent;
+  } catch (err) {
+    console.error('[SEND ERROR]', err.message);
+  }
+}
 
 // Servidor HTTP simple para ver el código QR en el navegador
 const server = http.createServer((req, res) => {
@@ -189,17 +207,36 @@ async function iniciarBotWhatsApp() {
     if (type !== 'notify') return;
 
     for (const msg of messages) {
-      if (msg.key.fromMe) continue;
-
       const remoteJid = msg.key.remoteJid;
       if (!remoteJid || remoteJid.includes('@broadcast') || remoteJid.includes('@newsletter')) continue;
 
-      const rawText = msg.message?.conversation || msg.message?.extendedTextMessage?.text || '';
+      // Soporte para pruebas en chat con uno mismo (mensaje a ti mismo)
+      const myPhoneNum = sock.user?.id ? sock.user.id.split(':')[0] : '593995616311';
+      const myPhoneJid = myPhoneNum + '@s.whatsapp.net';
+      const isSelfChat = remoteJid === myPhoneJid || (sock.user?.lid && remoteJid === sock.user.lid) || remoteJid.includes(myPhoneNum);
+
+      if (msg.key.fromMe) {
+        // Ignorar respuestas emitidas por el propio bot
+        if (botSentWamids.has(msg.key.id)) {
+          botSentWamids.delete(msg.key.id);
+          continue;
+        }
+        // Si no es un mensaje a uno mismo, ignorarlo (usuario escribiendo a otra persona)
+        if (!isSelfChat) {
+          continue;
+        }
+      }
+
+      let m = msg.message;
+      if (m?.ephemeralMessage) m = m.ephemeralMessage.message;
+      if (m?.viewOnceMessage) m = m.viewOnceMessage.message;
+      if (m?.documentWithCaptionMessage) m = m.documentWithCaptionMessage.message;
+      const rawText = m?.conversation || m?.extendedTextMessage?.text || m?.imageMessage?.caption || m?.videoMessage?.caption || '';
       const texto = rawText.trim();
       if (!texto) continue;
 
       const senderNum = remoteJid.replace('@s.whatsapp.net', '').replace('@lid', '');
-      console.log(`[IN] Mensaje recibido de ${senderNum}: "${texto}"`);
+      console.log(`[IN ${new Date().toLocaleTimeString()}] Mensaje de ${senderNum} (fromMe: ${msg.key.fromMe}, self: ${isSelfChat}): "${texto}"`);
 
       let session = userSessions.get(remoteJid);
       if (!session) {
@@ -233,7 +270,7 @@ async function iniciarBotWhatsApp() {
           waitingHuman: false
         };
         userSessions.set(remoteJid, session);
-        await sock.sendMessage(remoteJid, {
+        await enviarMensajeBot(sock, remoteJid, {
           text: '*Chat reiniciado con éxito.*\nSe ha borrado el historial de la conversación.\nPuede iniciar una nueva consulta o escribir *menu* para ver las opciones disponibles.'
         });
         continue;
@@ -251,7 +288,7 @@ async function iniciarBotWhatsApp() {
           '---',
           '_Escribe *menu* para opciones, *guia* para atención personalizada, o *0* para reiniciar._'
         ].join('\n');
-        await sock.sendMessage(remoteJid, { text: saludoText });
+        await enviarMensajeBot(sock, remoteJid, { text: saludoText });
         continue;
       }
 
@@ -271,7 +308,7 @@ async function iniciarBotWhatsApp() {
           '---',
           '_Escribe *menu* para opciones, *guia* para atención personalizada, o *0* para reiniciar._'
         ].join('\n');
-        await sock.sendMessage(remoteJid, { text: ubicacionText });
+        await enviarMensajeBot(sock, remoteJid, { text: ubicacionText });
         continue;
       }
 
@@ -308,7 +345,7 @@ async function iniciarBotWhatsApp() {
           '---',
           '_Escribe *menu* para opciones, *guia* para atención personalizada, o *0* para reiniciar._'
         ].join('\n');
-        await sock.sendMessage(remoteJid, { text: respCarrera });
+        await enviarMensajeBot(sock, remoteJid, { text: respCarrera });
         continue;
       }
 
@@ -333,7 +370,7 @@ async function iniciarBotWhatsApp() {
           '_Si en cualquier momento desea reactivar el asistente virtual automático, escriba *bot* o *0*._'
         ].join('\n');
 
-        await sock.sendMessage(remoteJid, { text: guiaText });
+        await enviarMensajeBot(sock, remoteJid, { text: guiaText });
         continue;
       }
 
@@ -354,7 +391,7 @@ async function iniciarBotWhatsApp() {
           'Responda con el *número* deseado o escriba su consulta directamente.'
         ].join('\n');
 
-        await sock.sendMessage(remoteJid, { text: menuText });
+        await enviarMensajeBot(sock, remoteJid, { text: menuText });
         continue;
       }
 
@@ -362,7 +399,7 @@ async function iniciarBotWhatsApp() {
       if (cmd === '/admision' || cmd === '1') {
         session.scope = 'admisiones';
         userSessions.set(remoteJid, session);
-        await sock.sendMessage(remoteJid, {
+        await enviarMensajeBot(sock, remoteJid, {
           text: '*Modo Admisiones Ikiam (1PA 2027) activado.*\nPuede consultar sobre requisitos de ingreso, oferta de carreras, fechas del proceso o puntajes referenciales.\n\n_Escriba *0* para reiniciar o *menu* para ver opciones._'
         });
         continue;
@@ -371,7 +408,7 @@ async function iniciarBotWhatsApp() {
       if (cmd === '/academico' || cmd === '2') {
         session.scope = 'academico';
         userSessions.set(remoteJid, session);
-        await sock.sendMessage(remoteJid, {
+        await enviarMensajeBot(sock, remoteJid, {
           text: '*Modo Procesos Académicos activado.*\nPuede consultar sobre trámites, homologaciones, retiros de asignaturas o justificaciones de inasistencia.\n\n_Escriba *0* para reiniciar o *menu* para ver opciones._'
         });
         continue;
@@ -379,19 +416,19 @@ async function iniciarBotWhatsApp() {
 
       if (cmd === '3') {
         const respuesta = await consultarMotorIkiam('¿Dónde descargo los formatos oficiales de solicitud de la Dirección Académica?', senderNum, 'academico', session.sid);
-        await sock.sendMessage(remoteJid, { text: respuesta + '\n\n---\n_Escribe *menu* para opciones, *guia* para ayuda humana, o *0* para reiniciar._' });
+        await enviarMensajeBot(sock, remoteJid, { text: respuesta + '\n\n---\n_Escribe *menu* para opciones, *guia* para ayuda humana, o *0* para reiniciar._' });
         continue;
       }
 
       if (cmd === '4') {
         const respuesta = await consultarMotorIkiam('caso:justificacion_salud', senderNum, 'academico', session.sid);
-        await sock.sendMessage(remoteJid, { text: respuesta + '\n\n---\n_Escribe *menu* para opciones, *guia* para ayuda humana, o *0* para reiniciar._' });
+        await enviarMensajeBot(sock, remoteJid, { text: respuesta + '\n\n---\n_Escribe *menu* para opciones, *guia* para ayuda humana, o *0* para reiniciar._' });
         continue;
       }
 
       if (cmd === '5') {
         const respuesta = await consultarMotorIkiam('caso:retiro_asignaturas_extraordinario', senderNum, 'academico', session.sid);
-        await sock.sendMessage(remoteJid, { text: respuesta + '\n\n---\n_Escribe *menu* para opciones, *guia* para ayuda humana, o *0* para reiniciar._' });
+        await enviarMensajeBot(sock, remoteJid, { text: respuesta + '\n\n---\n_Escribe *menu* para opciones, *guia* para ayuda humana, o *0* para reiniciar._' });
         continue;
       }
 
@@ -421,7 +458,7 @@ async function iniciarBotWhatsApp() {
       console.log(`[OUT] Respondiendo a ${senderNum}...`);
 
       const footer = '\n\n---\n_Escribe *menu* para opciones, *guia* para atención personalizada, o *0* para reiniciar el chat._';
-      await sock.sendMessage(remoteJid, { text: respuesta + footer });
+      await enviarMensajeBot(sock, remoteJid, { text: respuesta + footer });
     }
   });
 }
