@@ -2473,6 +2473,7 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
     font-size: 12px;
     line-height: 1.45;
     word-break: break-word;
+    white-space: pre-wrap;
   }
   .msg-bot {
     align-self: flex-start;
@@ -2491,6 +2492,7 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
     background: #ffffff;
     border-top: 1px solid #e2e8f0;
     display: flex;
+    align-items: flex-end;
     gap: 8px;
   }
   #widget-academico-input {
@@ -2499,7 +2501,15 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
     border-radius: 6px;
     padding: 7px 10px;
     font-size: 12px;
+    font-family: inherit;
+    line-height: 1.4;
+    resize: none;
+    max-height: 110px;
+    min-height: 34px;
+    height: 34px;
+    box-sizing: border-box;
     outline: none;
+    overflow-y: auto;
   }
   #widget-academico-input:focus {
     border-color: #0d5f3a;
@@ -2603,7 +2613,7 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
     </div>
   </div>
   <div id="widget-academico-inputarea">
-    <input type="text" id="widget-academico-input" placeholder="Escriba su consulta de admisión..." onkeydown="if(event.key==='Enter') enviarConsultaAdmisiones()" />
+    <textarea id="widget-academico-input" rows="1" placeholder="Escriba su consulta de admisión..." onkeydown="handleInputKeyDown(event)" oninput="autoResizeTextarea(this)"></textarea>
     <button id="widget-academico-send" onclick="enviarConsultaAdmisiones()">Enviar</button>
   </div>
 </div>
@@ -2805,6 +2815,21 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
     });
   };
 
+  function handleInputKeyDown(event) {
+    if (event.key === 'Enter') {
+      if (event.shiftKey) {
+        return; // Salto de línea con Shift + Enter
+      }
+      event.preventDefault();
+      enviarConsultaAdmisiones();
+    }
+  }
+
+  function autoResizeTextarea(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 110) + 'px';
+  }
+
   async function enviarConsultaAdmisiones() {
     var input = document.getElementById('widget-academico-input');
     var texto = input.value.trim();
@@ -2816,6 +2841,7 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
     uDiv.innerText = texto;
     msgs.appendChild(uDiv);
     input.value = '';
+    input.style.height = '34px';
     msgs.scrollTop = msgs.scrollHeight;
 
     var scp = window.ambitoActual || 'admisiones';

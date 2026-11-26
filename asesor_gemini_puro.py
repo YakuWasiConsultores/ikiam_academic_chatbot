@@ -674,6 +674,16 @@ def buscar_contexto_multi_db(pregunta: str, codigo_carrera: str = None):
         finally:
             conn_n.close()
 
+    # Filtro de pertinencia estricta: evitar que la palabra 'carrera' devuelva 'cambio de carrera' si no se solicitó cambio
+    preg_low = pregunta.lower()
+    es_cambio_explicito = any(k in preg_low for k in [
+        "cambio", "cambiar", "traslado", "transferencia", "homologar", "homologacion", "homologación", "convalidacion", "convalidación"
+    ])
+    if not es_cambio_explicito:
+        docs_rows = [d for d in docs_rows if "cambio" not in d[0].lower() and "homologacion" not in d[0].lower()]
+        network_rows = [n for n in network_rows if "cambio" not in n[0].lower() and "homologacion" not in n[0].lower()]
+        fragment_rows = [f for f in fragment_rows if "homologacion" not in (f[1] or "").lower() and "cambio" not in (f[1] or "").lower()]
+
     carrera_info = obtener_datos_carrera(codigo_carrera) if codigo_carrera else None
     return {
         "knowledge": knowledge_rows,
@@ -1362,7 +1372,10 @@ def _ejecutar_consulta(session_id: str, pregunta: str, scope: str = "academico")
         partes_ctx.append("RED DE TRÁMITES Y CORREOS OFICIALES RELACIONADOS:\n" + "\n".join(
             f"- {r[1]} | Autoridad: {r[2]} | Correo: {r[3]} | Plazo: {r[4]} | Enlace: {r[5]}" for r in ctx["network"]
         ))
-    if ctx["docs"]:
+    pide_doc = any(k in pregunta_norm.lower() for k in [
+        "pdf", "documento", "resolucion", "reglamento", "ver", "visualizar", "enlace", "norma", "formato", "descargar", "formulario", "plantilla", "archivo"
+    ])
+    if ctx["docs"] and (pide_doc or es_cambio_explicito):
         docs_validos = [d for d in ctx["docs"] if d[0] in ARCHIVOS_REALES]
         if docs_validos:
             partes_ctx.append("DOCUMENTOS FÍSICOS DISPONIBLES EN REPOSITORIO:\n" + "\n".join(
@@ -1410,6 +1423,7 @@ REGLAS DE RESPUESTA OBLIGATORIAS:
 - Ikiam NO dispone actualmente de residencias estudiantiles; acláralo si consultan sobre vivienda.
 - Sobre asistencia (Art. 87 RRA): el mínimo obligatorio es 70%. Si el estudiante tiene menos (ej. 65%), explica el riesgo de reprobación por inasistencias, el plazo improrrogable de 3 días hábiles para justificar si media enfermedad/calamidad, o el retiro extraordinario por fuerza mayor antes de finales.
 - Enlaza únicamente documentos existentes usando [Visualizar PDF: Nombre](/documentos/NOMBRE_ARCHIVO) si es PDF o [Descargar Formato: Nombre](/documentos/NOMBRE_ARCHIVO) si es Word, o portales reales verificados. Si el estudiante pide ver o visualizar documentos oficiales, reglamentos o resoluciones, incluye siempre el enlace directo correspondiente.
+- REGLA ESTRICTA DE PERTINENCIA DOCUMENTAL: NUNCA sugieras ni enlaces formularios de 'Cambio de Carrera', 'Reingreso' ni trámites de homologación si el estudiante está preguntando sobre qué carreras existen, la oferta académica o requisitos de admisión. En consultas sobre oferta de carreras, limítate a listar las 10 carreras oficiales agrupadas por sus 3 facultades y los canales de orientación pertinentes.
 - Redacta exclusivamente en Markdown limpio (viñetas, listas numeradas, negritas y enlaces [texto](url) o correos directos); NO emitas etiquetas HTML crudas como <div>, <p>, <br> o <h3>.
 - PROHIBIDO incluir emojis, emoticones o iconos gráficos Unicode. Mantén un tono institucional formal."""
 
