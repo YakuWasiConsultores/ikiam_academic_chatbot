@@ -34,6 +34,17 @@ def inicializar_db_auditoria():
                     notas_auditoria TEXT DEFAULT NULL
                 )
             """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS reportes_historial (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    fecha TEXT NOT NULL,
+                    primer_id INTEGER NOT NULL,
+                    ultimo_id INTEGER NOT NULL,
+                    total_historico INTEGER NOT NULL,
+                    html_dashboard TEXT NOT NULL,
+                    enviado_correo INTEGER DEFAULT 0
+                )
+            """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_consultas_scope ON consultas_historial(scope)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_consultas_fecha ON consultas_historial(timestamp)")
             conn.commit()
@@ -79,6 +90,7 @@ def registrar_consulta(scope: str, session_id: str, client_ip: str, pregunta: st
     resp_limpia = re.sub(r"\s+", " ", resp_limpia).strip()
 
     record_id = None
+    total_chats = 0
     with _LOCK:
         try:
             conn = sqlite3.connect(DB_AUDITORIA, timeout=20.0)
@@ -90,9 +102,21 @@ def registrar_consulta(scope: str, session_id: str, client_ip: str, pregunta: st
             """, (ahora_str, scope, session_id, client_ip or "anon", pregunta, resp_limpia, 1 if fue_reinicio else 0, tipo_fuente))
             conn.commit()
             record_id = cur.lastrowid
+
+            cur.execute("SELECT COUNT(*) FROM consultas_historial")
+            total_chats = cur.fetchone()[0]
             conn.close()
         except Exception as e:
             print("Error registrando consulta en auditoría:", e)
+
+    # Disparador automático: cada 10 chats procesados genera reporte y dashboard
+    if total_chats > 0 and (total_chats % 10) == 0:
+        try:
+            from reportador_automatico import procesar_disparo_cada_10_chats
+            t_rep = threading.Thread(target=procesar_disparo_cada_10_chats, args=(total_chats,), daemon=True)
+            t_rep.start()
+        except Exception as rep_err:
+            print("Error iniciando hilo de reporte automático:", rep_err)
 
     # Disparar sincronización asíncrona a Google Sheets / Drive si configurado
     payload = {
