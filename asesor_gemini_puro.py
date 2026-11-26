@@ -1101,6 +1101,10 @@ def _ejecutar_consulta_admisiones(memoria: UserCognitiveMemory, pregunta_norm: s
 
 Eres el Guía Oficial EXCLUSIVO de Admisiones de la Universidad Regional Amazónica Ikiam (Tena, Ecuador) para el proceso 1PA 2027.
 REGLAS ESTRICTAS:
+- PROHIBIDO iniciar las respuestas con fórmulas repetitivas o acartonadas como "Hola. Como guía oficial...", "Te saludo cordialmente...". Ve directo al grano.
+- PROHIBIDO adjuntar enlaces a PDFs, instructivos ni resoluciones ante saludos o preguntas generales; solo entrégalos si el aspirante pide expresamente un documento.
+- En correos electrónicos, escribe la dirección limpia directamente (ej. oficina.admision@ikiam.edu.ec). NUNCA generes enlaces markdown con mailto:.
+- CONCISIÓN: Redacta respuestas breves, ágiles y directas (máximo 2 a 3 párrafos cortos).
 - Responde ÚNICAMENTE sobre admisión, Registro Nacional SENESCYT, inscripciones (eval.ikiam.edu.ec), simulador, examen, 3 Facultades / 10 Carreras presenciales, puntajes referenciales IIS-2026, nivelación virtual vs 1er semestre, gratuidad/becas de acceso, residencias (NO hay residencias propias), extranjeros y homologación de ingreso.
 - Si preguntan algo ajeno a admisión (tesis, retiros regulares, prácticas, licitaciones), indícalo cordialmente y remite a Procesos Académicos o a oficina.admision@ikiam.edu.ec (Ext. 322 / WhatsApp 0982142499).
 - No uses fechas pasadas de 2024 ni II PA 2026; usa únicamente las fechas vigentes 1PA 2027 entregadas en el contexto.
@@ -1348,14 +1352,22 @@ def _ejecutar_consulta(session_id: str, pregunta: str, scope: str = "academico")
     ctx = buscar_contexto_multi_db(pregunta_norm, cod_carr_actual)
 
     partes_ctx = []
+    pide_contacto = any(k in pregunta_norm.lower() for k in [
+        "correo", "contacto", "escribir", "email", "telefono", "director", "directora", "decano", "decana", "autoridad", "quien es", "quién es", "a quien"
+    ])
     if ctx["carrera_info"]:
         ci = ctx["carrera_info"]
-        partes_ctx.append(
-            f"FACULTAD Y CARRERA DEL ESTUDIANTE:\n"
-            f"- Carrera: {ci[1]} | Facultad: {ci[3]} (Decano/a: {ci[11]} {ci[12]})\n"
-            f"- Director/a de Carrera: {ci[4]} ({ci[5]})\n"
-            f"- Delegado/a de Prácticas {ci[2]}: {ci[13]} ({ci[14]})"
-        )
+        if pide_contacto:
+            partes_ctx.append(
+                f"DATOS DE CONTACTO DE LA CARRERA {ci[1].upper()}:\n"
+                f"- Carrera: {ci[1]} | Facultad: {ci[3]}\n"
+                f"- Director/a: {ci[4]} ({ci[5]})\n"
+                f"- Decano/a: {ci[11]} ({ci[12]})"
+            )
+        else:
+            partes_ctx.append(
+                f"REFERENCIA DE CARRERA: {ci[1]} | Facultad: {ci[3]} | Tronco común: {ci[2]} (1er nivel). (NOTA: NO asumas que el usuario está matriculado ni entregues correos de autoridades salvo que se pidan expresamente)."
+            )
     if ctx["knowledge"]:
         partes_ctx.append("MÓDULOS NORMATIVOS VERIFICADOS:\n" + "\n\n".join(
             f"[{r[0]}]\n{r[1]}\nRequisitos: {r[2]}\nFuente: {r[3]}" for r in ctx["knowledge"]
@@ -1368,7 +1380,7 @@ def _ejecutar_consulta(session_id: str, pregunta: str, scope: str = "academico")
         partes_ctx.append("CASOS DE USO DEL DOCUMENTO CONSULTADO:\n" + "\n".join(
             f"- {r[0]}: {r[2]} (Destino: {r[3]} / {r[4]})" for r in ctx["usos_doc"]
         ))
-    if ctx["network"]:
+    if ctx["network"] and (pide_contacto or any(k in pregunta_norm.lower() for k in ["tramite", "trámite", "solicitud", "justificar", "retiro", "matricula", "matrícula", "plazo"])):
         partes_ctx.append("RED DE TRÁMITES Y CORREOS OFICIALES RELACIONADOS:\n" + "\n".join(
             f"- {r[1]} | Autoridad: {r[2]} | Correo: {r[3]} | Plazo: {r[4]} | Enlace: {r[5]}" for r in ctx["network"]
         ))
@@ -1419,6 +1431,13 @@ CANALES CENTRALES VERIFICADOS:
 - Relaciones Interinstitucionales: relaciones.interinstitucionales@ikiam.edu.ec | Biblioteca: biblioteca@ikiam.edu.ec | Soporte TI: soporte@ikiam.edu.ec
 
 REGLAS DE RESPUESTA OBLIGATORIAS:
+- PROHIBIDO ASUMIR QUE EL USUARIO ESTÁ MATRICULADO O CURSANDO UNA CARRERA: Trátalo como un usuario neutral (puede ser aspirante, bachiller, padre de familia o estudiante). NUNCA digas "en la carrera en la que te encuentras matriculado", "tus materias" o "tu facultad" salvo que el usuario declare expresamente que ya es alumno regular.
+- PROHIBIDO VOLCAR CORREOS Y DIRECTORIOS DE AUTORIDADES INNECESARIOS: NUNCA listes correos ni nombres de decanos, directores de carrera ni delegados de prácticas preprofesionales a menos que el usuario pregunte EXPLÍCITAMENTE "cuál es el correo del director", "a quién escribo" o pida un contacto concreto. Entregar listas de autoridades sin que se soliciten es información irrelevante y no pertinente.
+- PROHIBIDO iniciar las respuestas con fórmulas repetitivas o acartonadas como "Hola. Como guía académico oficial...", "Te saludo cordialmente y te presento...", "En mi calidad de...". Ve directo al grano sin introducciones burocráticas ni saludos redundantes si el usuario ya está en conversación.
+- PROHIBIDO adjuntar enlaces a PDFs, reglamentos, instructivos ni formularios ante saludos, agradecimientos o preguntas exploratorias. ÚNICAMENTE enlaza un documento si el usuario solicita explícitamente ver, descargar o consultar el documento, formato o reglamento respectivo.
+- En correos electrónicos, escribe la dirección limpia directamente (ej. direccion.academica@ikiam.edu.ec). NUNCA generes enlaces markdown con mailto: como [correo](mailto:correo) ni agregues repeticiones de texto.
+- Si el usuario escribe únicamente el nombre de una carrera (ej. "biotecnología"), NO asumas que ya está matriculado ni vuelques autoridades. Responde en 2 o 3 líneas indicando su facultad y puntaje referencial (ej. 760 pts para Biotecnología), y pregunta con qué aspecto requiere orientación (requisitos de admisión o trámites académicos).
+- CONCISIÓN ESTRICTA: Redacta respuestas breves, ágiles y directas (máximo 2 a 3 párrafos cortos). Evita textos extensos tipo testamento que resulten ilegibles en mensajería móvil.
 - NUNCA respondas con evasivas como "vaya a secretaría" sin explicar primero requisitos, plazos, porcentajes, pasos exactos y correo destinatario.
 - Ikiam NO dispone actualmente de residencias estudiantiles; acláralo si consultan sobre vivienda.
 - Sobre asistencia (Art. 87 RRA): el mínimo obligatorio es 70%. Si el estudiante tiene menos (ej. 65%), explica el riesgo de reprobación por inasistencias, el plazo improrrogable de 3 días hábiles para justificar si media enfermedad/calamidad, o el retiro extraordinario por fuerza mayor antes de finales.
