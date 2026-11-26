@@ -210,7 +210,7 @@ FAQS_CURADAS = [
         "slug": "adm_costos_becas_vivienda",
         "categoria": "Gratuidad, Becas y Vivienda",
         "boton_etiqueta": "Costos, Pérdida de Gratuidad, Becas y Residencias",
-        "boton_descripcion": "Pregrado gratuito, aranceles si perdió gratuidad (~$40–$50/materia), becas DBU y alojamiento en Tena.",
+        "boton_descripcion": "Pregrado gratuito, aranceles diferenciados por quintil socioeconómico si perdió gratuidad, becas DBU y alojamiento en Tena.",
         "pregunta_canonica": "¿Tiene costo estudiar en Ikiam, ofrecen becas y cuentan con residencias estudiantiles?",
         "variantes_pregunta": "tiene costo estudiar | cuanto pagar si perdi gratuidad | ficha socioeconomica | ofrece becas | tiene residencias estudiantiles | vivienda para estudiantes | alojamiento",
         "palabras_clave": "costo, arancel, gratuidad, perdi gratuidad, quintil, ficha socioeconomica, beca, becas, residencia, residencias estudiantiles, vivienda, alojamiento, terna, muyuna",
@@ -222,7 +222,7 @@ FAQS_CURADAS = [
 <div style='color:#0d5f3a; font-weight:700; font-size:13px; margin:0 0 5px;'>Costos, Gratuidad, Becas y Vivienda Estudiantil</div>
 <ul style='font-size:12px; padding-left:16px; line-height:1.45; margin:0;'>
   <li><strong>¿Tiene costo estudiar en Ikiam?</strong> <strong>No.</strong> Como universidad pública del Ecuador, la carrera de pregrado goza de gratuidad en primera matrícula (debes cubrir manutención, alimentación y transporte si vienes de otra provincia).</li>
-  <li><strong>Si perdiste la gratuidad (segunda carrera o pérdida de créditos):</strong> Al ingresar completas la <strong>ficha socioeconómica</strong> para fijar tu quintil de descuento; según la orientación de Admisión, el costo referencial promedio ronda entre <strong>$40 y $50 por asignatura</strong> (varía según nivel socioeconómico y créditos). Dudas de ficha socioeconómica: <a href='mailto:bienestar.universitario@ikiam.edu.ec' style='color:#0d5f3a; font-weight:bold;'>bienestar.universitario@ikiam.edu.ec</a> (<a href='mailto:manuel.seraquive@ikiam.edu.ec' style='color:#0d5f3a;'>manuel.seraquive@ikiam.edu.ec</a>).</li>
+  <li><strong>Si perdiste la gratuidad (segunda carrera o asignaturas reprobadas):</strong> En el sistema universitario público del Ecuador (Art. 80 LOES y Res. 032-SG-SE-007-CU-IKIAM-2022), <strong>no existe una tarifa fija</strong>. El valor a cancelar <strong>depende estrictamente del quintil socioeconómico</strong> asignado al estudiante y del <strong>número de créditos/horas</strong> de la asignatura. Para determinar el arancel proporcional, debes completar la <strong>Ficha Socioeconómica</strong> ante la Dirección de Bienestar Universitario (DBU), donde los quintiles de mayor vulnerabilidad (Quintil 1 y 2) acceden al subsidio preferencial o arancel mínimo. La liquidación exacta la calcula de forma individual el Sistema de Gestión Académica (SGA) en cada matrícula. Consultas oficiales de ficha socioeconómica: <a href='mailto:bienestar.universitario@ikiam.edu.ec' style='color:#0d5f3a; font-weight:bold;'>bienestar.universitario@ikiam.edu.ec</a>.</li>
   <li><strong>Becas y Ayudas Económicas:</strong> Disponibles para estudiantes matriculados; consulta fechas y requisitos en <a href='https://www.ikiam.edu.ec/index.php/becas-y-ayudas-economicas/' target='_blank' style='color:#0d5f3a; font-weight:bold;'>Becas Ikiam</a> (DBU Ext. 260).</li>
   <li><strong>Residencias estudiantiles:</strong> <strong>Ikiam NO dispone actualmente de residencias estudiantiles propias</strong> dentro del campus (Km 7 vía Tena-Muyuna), pero existen arriendos accesibles en Muyuna y Tena.</li>
 </ul>
@@ -245,7 +245,7 @@ FAQS_CURADAS = [
 <ul style='font-size:12px; padding-left:16px; line-height:1.45; margin:0;'>
   <li><strong>Recuperar contraseña / correo institucional:</strong> Utiliza la plataforma <a href='https://autoservicio.ikiam.edu.ec/autoservicio' target='_blank' style='color:#0d5f3a; font-weight:bold;'>Ikiam Autoservicio</a> o escribe a <a href='mailto:soporte@ikiam.edu.ec' style='color:#0d5f3a; font-weight:bold;'>soporte@ikiam.edu.ec</a> (TICS, piso 3 Edificio Administrativo).</li>
   <li><strong>Aula Virtual y links de clases:</strong> Ingresa a <a href='https://aulavirtual.ikiam.edu.ec/' target='_blank' style='color:#0d5f3a; font-weight:bold;'>aulavirtual.ikiam.edu.ec</a> con tu correo institucional.</li>
-  <li><strong>Valores adeudados / aranceles previos:</strong> Escribe a <a href='mailto:daniel.coronel@ikiam.edu.ec' style='color:#0d5f3a; font-weight:bold;'>daniel.coronel@ikiam.edu.ec</a> indicando tu número de cédula y nombres completos para verificar tu estado de cuenta.</li>
+  <li><strong>Valores adeudados / aranceles previos:</strong> Escribe a la Dirección Financiera / Recaudación al correo oficial <a href='mailto:financiero@ikiam.edu.ec' style='color:#0d5f3a; font-weight:bold;'>financiero@ikiam.edu.ec</a> o consulta en el SGA indicando tu número de cédula y nombres completos para verificar tu estado de cuenta.</li>
   <li><strong>Inasistencia a Inducción:</strong> La inducción brinda lineamientos obligatorios para inicio de clases; si no puedes asistir por causa justificada, notifica oportunamente a <a href='mailto:oficina.admision@ikiam.edu.ec' style='color:#0d5f3a; font-weight:bold;'>oficina.admision@ikiam.edu.ec</a>.</li>
 </ul>
 </div>""",
