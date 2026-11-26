@@ -86,7 +86,7 @@ def health():
     return jsonify({
         "status": "healthy",
         "service": "ikiam-academic-chatbot",
-        "version": "2.6-auto-reporting-dashboard"
+        "version": "2.5-enterprise-hardened"
     }), 200
 
 @app.route("/api/chat", methods=["POST", "OPTIONS"])
@@ -328,7 +328,6 @@ def panel_auditoria_html():
             <p>Registro continuo de preguntas formuladas por estudiantes y aspirantes para retroalimentación y mejora de respuestas.</p>
         </div>
         <div style="display:flex; gap:10px; align-items:center;">
-            <a href="/admin/reportes/ultimo" target="_blank" class="btn-export" style="background:#1e40af;">Ver Último Dashboard (10 Chats)</a>
             <a href="/api/consultas/exportar?formato=csv" class="btn-export">Descargar CSV para Excel</a>
             <a href="/admin/logout" class="btn-logout">Cerrar Sesión</a>
         </div>
@@ -382,21 +381,6 @@ def panel_auditoria_html():
     filas_finales = filas_html or '<tr><td colspan="7" style="text-align:center; padding:24px; color:#94a3b8; font-size:12px;">No hay consultas registradas aún. Formule preguntas en el chat para visualizarlas aquí.</td></tr>'
     html = plantilla.replace("__BANNER_PRESUPUESTO__", banner_presupuesto).replace("__FILAS__", filas_finales)
     return Response(html, mimetype="text/html; charset=utf-8")
-
-@app.route("/admin/reportes/ultimo", methods=["GET"])
-def ver_ultimo_reporte_html():
-    """Visualización directa del último dashboard compilado de 10 chats."""
-    if not verificar_admin_auth(request):
-        return Response("No autorizado. Ingrese primero al panel administrativo.", status=401, mimetype="text/plain; charset=utf-8")
-    with _LOCK:
-        conn = sqlite3.connect(DB_AUDITORIA, timeout=20.0)
-        cur = conn.cursor()
-        cur.execute("SELECT html_dashboard FROM reportes_historial ORDER BY id DESC LIMIT 1")
-        row = cur.fetchone()
-        conn.close()
-    if row:
-        return Response(row[0], mimetype="text/html; charset=utf-8")
-    return Response("No se han generado reportes de 10 chats todavía.", mimetype="text/plain; charset=utf-8")
 
 @app.route("/admin/logout", methods=["GET"])
 def admin_logout():
