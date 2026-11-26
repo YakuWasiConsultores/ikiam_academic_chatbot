@@ -2,20 +2,23 @@
 """
 Módulo de Seguridad Institucional para el Chatbot de Ikiam.
 Protección multinivel contra:
-1. Inyección de Prompts y Jailbreaks (DAN, Persona Hijacking, System Prompt Leaking).
+1. Inyección de Prompts y Jailbreaks (DAN, Persona Hijacking, System Prompt Leaking, Leetspeak, Spacing, Roleplay).
 2. Intentos de volcado de información técnica (SQL Injection, Env vars, API keys, esquemas DB).
 3. Data Loss Prevention (DLP) en respuestas del modelo.
 4. Desbordamiento de búfer y ataques DoS por longitud de payload.
-5. Control de Tasa (Rate Limiting) Multinivel: Anti-Ráfaga (Burst), Cuota Horaria por IP y por Dispositivo (Client Fingerprint).
-6. Token Budget Guard: Presupuesto diario de tokens y conmutación automática a Modo RAG Determinista (Zero-Token).
+5. Control de Tasa (Rate Limiting) Multinivel: Anti-Ráfaga (Burst), Cuota Horaria por IP y por Huella de Dispositivo Obligatoria.
+6. Protección Anti-Fuerza Bruta en el Panel Administrativo.
+7. Token Budget Guard: Presupuesto diario de tokens y conmutación automática a Modo RAG Determinista (Zero-Token).
 """
 
 import datetime
+import hashlib
 import html
 import os
 import re
 import threading
 import time
+import unicodedata
 
 MAX_PREGUNTA_LONGITUD = 600
 
@@ -54,25 +57,32 @@ MENSAJE_CUOTA_HORARIA_EXCEDIDA = (
 
 # Patrones vigilados de inyección de prompts, jailbreak y extracción de directivas internas
 PATRONES_INYECCION = [
-    # Extracción de prompt del sistema
+    # Extracción de prompt del sistema (Español, Inglés, Multilingüe)
     r"\b(?:system\s*prompt|system_instruction|prompt\s*inicial|prompt\s*del\s*sistema)\b",
-    r"\b(?:repite|muestra|dame|imprime|revela|escribe|copia)\b.*?\b(?:instrucci[oó]n(?:es)?|prompts?|reglas?|directrices?)\b",
-    r"\b(?:instrucci[oó]n(?:es)?|prompts?)\s+(?:del\s+sistema|anteriores|de\s+arriba|iniciales)\b",
+    r"\b(?:repite|muestra|dame|imprime|revela|escribe|copia|dicta)\b.*?\b(?:instrucci[oó]n(?:es)?|prompts?|reglas?|directrices?|contexto)\b",
+    r"\b(?:instrucci[oó]n(?:es)?|prompts?)\s+(?:del\s+sistema|anteriores|de\s+arriba|iniciales|ocultas?)\b",
     r"\b(?:what\s+is\s+your\s+system\s+prompt|repeat\s+the\s+words\s+above|print\s+your\s+instructions)\b",
+    r"\b(?:output|repeat|print|reveal|show|display|echo|tell\s+me)\b.*?\b(?:system\s+(?:prompt|instructions?|rules?)|guidelines?|initial\s+(?:prompt|instructions?))\b",
+    r"\b(?:verbatim|word\s+for\s+word)\b.*?\b(?:prompt|instructions?|rules?)\b",
     r"\b(?:cu[aá]les\s+son\s+tus\s+instrucciones|qu[eé]\s+te\s+dijeron\s+que\s+hagas|cu[aá]les\s+son\s+tus\s+reglas\s+secretas)\b",
-    
-    # Anulación de directivas / Jailbreaks
-    r"\b(?:ignor\w*|olvid\w*|desobedec\w*|desobedezc\w*|omit\w*|descart\w*)\b.*?\b(?:instrucci[oó]n(?:es)?|reglas?|directrices?|prompts?)\b",
+    r"\b(?:traduisez|traduza|mostre|repita|afficher|donnez)\b.*?\b(?:instructions?|regras?|règles?|directives?)\b",
+
+    # Anulación de directivas / Jailbreaks / Roleplay / Virtualización
+    r"\b(?:ignor\w*|olvid\w*|desobedec\w*|desobedezc\w*|omit\w*|descart\w*|disregard|override|bypass)\b.*?\b(?:instrucci[oó]n(?:es)?|reglas?|directrices?|prompts?|instructions?|rules?|guidelines?)\b",
     r"\b(?:disregard\s+all\s+previous\s+instructions|override\s+all\s+rules|bypass\s+restrictions)\b",
     r"\b(?:dan\s*mode|developer\s*mode|modo\s*desarrollador|jailbreak|modo\s*dios|sin\s*censura|sin\s*restricciones)\b",
     r"\b(?:act[uú]a\s+como\s+(?:un\s+)?(?:terminal|consola|hacker|root|linux|bash|cmd|powershell))\b",
     r"\b(?:you\s+are\s+now|a\s+partir\s+de\s+ahora\s+eres)\s+(?:un\s+)?(?:ia\s+sin\s+reglas|asistente\s+sin\s+filtros)\b",
-    
-    # Reconocimiento y volcado técnico / SQL / Backend
+    r"\b(?:imagina|simula|sup[oó]n|pretend|act\s+as\s+if)\b.*?\b(?:escenario|auditor[ií]a|root|consola|hacker|sin\s+restricciones|revel(?:ar|es|a)|directrices|prompt)\b",
+
+    # Reconocimiento técnico / Inyección de Delimitadores / JSON Jailbreaks / SQL
     r"\b(?:select\s+.*\s+from|union\s+select|drop\s+table|insert\s+into|delete\s+from|sqlite_master)\b",
     r"\b(?:gemini_api_key|api_key|aiza[0-9a-za-z_-]{20,}|claves?\s+api|token\s+secreto)\b",
     r"\b(?:variables?\s+de\s+entorno|env\s*vars|os\.environ|process\.env|cat\s+/etc|ls\s+-la)\b",
     r"\b(?:volcar|vuelca|dump)\s+(?:la\s+)?(?:base\s+de\s+datos|memoria|schema|tablas?)\b",
+    r"<\s*/?\s*(?:system|system[\s_]*instruction|instructions?|prompt|admin|developer[\s_]*mode|consulta[\s_]*usuario)\b",
+    r"\[\s*/?\s*(?:system|system[\s_]*instruction|instructions?|prompt|admin)\s*\]",
+    r"\b(?:responde|devuelve|retorna|output|return)\b.*?\b(?:json|yaml|xml)\b.*?\b(?:prompt|directriz|instrucci[oó]n|reglas?|rules?)\b",
 ]
 
 REGEX_INYECCION = re.compile("|".join(PATRONES_INYECCION), re.IGNORECASE)
@@ -103,6 +113,12 @@ MAX_HOURLY_EXTERNAL_IP = 50
 MAX_HOURLY_CAMPUS_IP = 600
 MAX_HOURLY_CLIENT_DEVICE = 35
 HOURLY_WINDOW_SECONDS = 3600
+
+# Control Anti-Fuerza Bruta en Panel Administrativo
+_ADMIN_LOCK = threading.Lock()
+_ADMIN_FAILED_ATTEMPTS = {}  # IP -> list of timestamps
+MAX_ADMIN_FAILED_ATTEMPTS = 5
+ADMIN_LOCKOUT_WINDOW_SECONDS = 900  # 15 minutos
 
 # Estructuras para Token Budget Guard
 _BUDGET_LOCK = threading.Lock()
@@ -166,6 +182,72 @@ def obtener_estadisticas_presupuesto() -> dict:
             "modo_resguardo_activo": usado >= MAX_DAILY_TOKENS
         }
 
+def extraer_ip_cliente_segura(headers: dict, remote_addr: str = "") -> str:
+    """
+    Extrae la IP real del cliente evitando la inyección de cabeceras X-Forwarded-For falsificadas.
+    1. Si existe CF-Connecting-IP (Cloudflare Edge), se prioriza como IP verificada de borde.
+    2. Si existe X-Real-IP, se evalúa.
+    3. Si se examina X-Forwarded-For, en arquitecturas con reverse proxy (Render/Nginx),
+       las IPs añadidas por proxies de confianza se agregan al final de la lista.
+       El cliente malicioso inyecta en la primera posición. Por ende, se toma la última IP
+       válida agregada por la infraestructura.
+    """
+    cf_ip = headers.get("CF-Connecting-IP", "").strip()
+    if cf_ip:
+        return cf_ip
+
+    x_real = headers.get("X-Real-IP", "").strip()
+    if x_real:
+        return x_real
+
+    xff = headers.get("X-Forwarded-For", "").strip()
+    if xff:
+        partes = [p.strip() for p in xff.split(",") if p.strip()]
+        if partes:
+            return partes[-1]
+
+    return (remote_addr or "unknown").strip()
+
+def generar_huella_dispositivo(ip: str, user_agent: str = "", accept_language: str = "", client_id_raw: str = "") -> str:
+    """
+    Garantiza que siempre exista una huella de dispositivo (clientId), incluso si el cliente omite
+    deliberadamente el campo en el JSON para eludir la cuota por dispositivo.
+    """
+    clean_client_id = "".join(c for c in (client_id_raw or "") if c.isalnum() or c in "-_")[:64]
+    if clean_client_id and len(clean_client_id) >= 8:
+        return clean_client_id
+    
+    # Generar huella sintética a partir del contexto HTTP
+    raw_fingerprint = f"{ip}|{user_agent.strip()}|{accept_language.strip()}"
+    return "syn_" + hashlib.sha256(raw_fingerprint.encode("utf-8")).hexdigest()[:20]
+
+def registrar_intento_fallido_admin(ip: str):
+    """Registra un fallo de autenticación administrativa para mitigar fuerza bruta."""
+    now = time.time()
+    with _ADMIN_LOCK:
+        intentos = _ADMIN_FAILED_ATTEMPTS.setdefault(ip, [])
+        intentos[:] = [t for t in intentos if now - t < ADMIN_LOCKOUT_WINDOW_SECONDS]
+        intentos.append(now)
+
+def limpiar_intentos_admin(ip: str):
+    """Limpia los intentos fallidos tras un acceso exitoso."""
+    with _ADMIN_LOCK:
+        _ADMIN_FAILED_ATTEMPTS.pop(ip, None)
+
+def verificar_bloqueo_fuerza_bruta_admin(ip: str) -> (bool, int):
+    """
+    Verifica si una IP está temporalmente bloqueada por exceso de intentos administrativos fallidos.
+    Retorna (permitido: bool, segundos_restantes: int).
+    """
+    now = time.time()
+    with _ADMIN_LOCK:
+        intentos = _ADMIN_FAILED_ATTEMPTS.get(ip, [])
+        intentos[:] = [t for t in intentos if now - t < ADMIN_LOCKOUT_WINDOW_SECONDS]
+        if len(intentos) >= MAX_ADMIN_FAILED_ATTEMPTS:
+            tiempo_restante = int(ADMIN_LOCKOUT_WINDOW_SECONDS - (now - intentos[0]))
+            return False, max(1, tiempo_restante)
+        return True, 0
+
 def es_ip_campus(ip: str) -> bool:
     """Determina si una dirección IP pertenece a la red de campus de Ikiam o subredes autorizadas."""
     if not ip:
@@ -183,7 +265,7 @@ def verificar_limites_trafico(client_ip: str, client_id: str = "") -> (bool, str
     """
     now = time.time()
     with _RATE_LOCK:
-        # 1. Control Anti-Ráfaga por Dispositivo (si viene con client_id)
+        # 1. Control Anti-Ráfaga por Dispositivo (siempre presente por huella sintética)
         if client_id and len(client_id) >= 8:
             cb_times = _CLIENT_BURST.setdefault(client_id, [])
             cb_times[:] = [t for t in cb_times if now - t < BURST_WINDOW_SECONDS]
@@ -231,12 +313,52 @@ def validar_tamano_consulta(texto: str) -> (bool, str):
         return False, MENSAJE_BLOQUEO_SEGURIDAD
     return True, ""
 
+def pre_normalizar_texto(texto: str) -> list[str]:
+    """
+    Desarma técnicas de ofuscación léxica contra el firewall de prompts:
+    1. Normalización Unicode NFKD (homóglifos, acentos, caracteres invisibles).
+    2. Desespaciado de caracteres individuales ('s y s t e m' -> 'system').
+    3. Sustituciones Leetspeak comunes ('1gn0re' -> 'ignore').
+    """
+    if not texto:
+        return []
+    # 1. Normalización Unicode NFKD
+    norm = unicodedata.normalize("NFKD", texto)
+    norm = re.sub(r"[\u200B-\u200D\uFEFF]", "", norm)
+
+    # 2. Desespaciado de caracteres individuales
+    desespaciado = re.sub(r"(?<=\b[a-zA-Z0-9])\s+(?=[a-zA-Z0-9]\b)", "", norm)
+
+    # 3. Leetspeak mapping
+    tabla_leet = str.maketrans({
+        "0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t", "@": "a", "$": "s", "!": "i"
+    })
+    desleet = norm.translate(tabla_leet)
+    desleet_desespaciado = desespaciado.translate(tabla_leet)
+
+    variantes = {
+        norm.lower().strip(),
+        desespaciado.lower().strip(),
+        desleet.lower().strip(),
+        desleet_desespaciado.lower().strip(),
+        re.sub(r"[\s_]+", " ", norm.lower()).strip(),
+        re.sub(r"[\s_]+", " ", desespaciado.lower()).strip(),
+        re.sub(r"[\s_]+", " ", desleet.lower()).strip(),
+        re.sub(r"[\s_]+", " ", desleet_desespaciado.lower()).strip(),
+    }
+    return list(variantes)
+
 def detectar_intento_inyeccion(texto: str) -> bool:
-    """Detecta si la consulta del usuario intenta anular instrucciones, extraer prompts o atacar el backend."""
+    """
+    Detecta si la consulta del usuario intenta anular instrucciones, extraer prompts o atacar el backend,
+    evaluando todas las variantes pre-normalizadas.
+    """
     if not texto:
         return False
-    norm = re.sub(r"[\s_]+", " ", texto).strip()
-    return bool(REGEX_INYECCION.search(norm))
+    for variante in pre_normalizar_texto(texto):
+        if REGEX_INYECCION.search(variante):
+            return True
+    return False
 
 def sanitizar_salida_segura(html_resp: str) -> str:
     """

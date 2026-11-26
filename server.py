@@ -25,6 +25,11 @@ from seguridad_ikiam import (
     MENSAJE_BLOQUEO_SEGURIDAD,
     verificar_limites_trafico,
     obtener_estadisticas_presupuesto,
+    extraer_ip_cliente_segura,
+    generar_huella_dispositivo,
+    verificar_bloqueo_fuerza_bruta_admin,
+    registrar_intento_fallido_admin,
+    limpiar_intentos_admin,
 )
 
 app = Flask(__name__, static_folder=None)
@@ -72,7 +77,7 @@ def health():
     return jsonify({
         "status": "healthy",
         "service": "ikiam-academic-chatbot",
-        "version": "2.3-pdf-inline-viewer"
+        "version": "2.4-hardened-shield"
     }), 200
 
 @app.route("/api/chat", methods=["POST", "OPTIONS"])
@@ -86,12 +91,15 @@ def chat():
     # Sanitizar session_id para evitar caracteres de control o inyecciones de ruta
     session_id = "".join(c for c in session_id_raw if c.isalnum() or c in "-_")[:64] or "web_default_session"
     client_id_raw = str(data.get("clientId", "")).strip()
-    client_id = "".join(c for c in client_id_raw if c.isalnum() or c in "-_")[:64]
     
     scope_raw = str(data.get("scope", "academico")).strip().lower()
     scope = "admisiones" if scope_raw in ("admisiones", "admision") else "academico"
 
-    client_ip = request.headers.get("X-Forwarded-For", request.remote_addr or "unknown").split(",")[0].strip()
+    # Extracción de IP segura (anti-spoofing) y huella de dispositivo obligatoria
+    client_ip = extraer_ip_cliente_segura(request.headers, request.remote_addr or "unknown")
+    user_agent = request.headers.get("User-Agent", "")
+    accept_lang = request.headers.get("Accept-Language", "")
+    client_id = generar_huella_dispositivo(client_ip, user_agent, accept_lang, client_id_raw)
     
     # 1. Control de tráfico multicapa (Anti-Ráfaga + Cuota Horaria por IP y Dispositivo)
     permitido, err_trafico = verificar_limites_trafico(client_ip, client_id)
@@ -205,13 +213,23 @@ LOGIN_HTML_TEMPLATE = """<!DOCTYPE html>
 @app.route("/admin/consultas", methods=["GET", "POST"])
 def panel_auditoria_html():
     """Panel visual y formal para revisar consultas en vivo y descargar el dataset."""
+    client_ip = extraer_ip_cliente_segura(request.headers, request.remote_addr or "unknown")
+
     if request.method == "POST":
+        permitido, segs_bloqueo = verificar_bloqueo_fuerza_bruta_admin(client_ip)
+        if not permitido:
+            err_html = f'<div class="err">Acceso temporalmente bloqueado por exceso de intentos fallidos. Intente nuevamente en {segs_bloqueo} segundos.</div>'
+            return Response(LOGIN_HTML_TEMPLATE.replace("__ERROR_MSG__", err_html), mimetype="text/html; charset=utf-8"), 429
+
         token_ingresado = request.form.get("token", "").strip()
         if token_ingresado == ADMIN_TOKEN:
+            limpiar_intentos_admin(client_ip)
             resp = redirect("/admin/consultas")
             resp.set_cookie("ikiam_admin_token", token_ingresado, max_age=86400 * 7, httponly=True, samesite="Lax")
             return resp
         else:
+            registrar_intento_fallido_admin(client_ip)
+            time.sleep(1.5)  # Tarpit defensivo contra fuerza bruta
             err_html = '<div class="err">Token administrativo incorrecto. Acceso denegado.</div>'
             return Response(LOGIN_HTML_TEMPLATE.replace("__ERROR_MSG__", err_html), mimetype="text/html; charset=utf-8"), 401
 
