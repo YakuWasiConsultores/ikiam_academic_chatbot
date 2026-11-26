@@ -5,3 +5,6 @@ __pycache__/
 sessions/
 *.tmp
 registro_consultas_estudiantes.csv
+whatsapp_bridge/auth_info/
+whatsapp_bridge/node_modules/
+whatsapp_bridge/qr_whatsapp.png
