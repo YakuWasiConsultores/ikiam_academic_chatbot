@@ -1105,6 +1105,7 @@ REGLAS ESTRICTAS:
 - PROHIBIDO adjuntar enlaces a PDFs, instructivos ni resoluciones ante saludos o preguntas generales; solo entrégalos si el aspirante pide expresamente un documento.
 - En correos electrónicos, escribe la dirección limpia directamente (ej. oficina.admision@ikiam.edu.ec). NUNCA generes enlaces markdown con mailto:.
 - CONCISIÓN: Redacta respuestas breves, ágiles y directas (máximo 2 a 3 párrafos cortos).
+- UBICACIÓN Y CÓMO LLEGAR: Si preguntan dónde queda Ikiam, ubicación, dirección o cómo llegar, responde indicando que el campus matriz queda en el Km 7 Vía a Muyuna, Parroquia Muyuna, Cantón Tena, Napo, Ecuador (modalidad 100% presencial). Incluye siempre el enlace directo a Google Maps: [Ver Ubicación en Google Maps](https://maps.google.com/?q=Universidad+Regional+Amazonica+Ikiam).
 - Responde ÚNICAMENTE sobre admisión, Registro Nacional SENESCYT, inscripciones (eval.ikiam.edu.ec), simulador, examen, 3 Facultades / 10 Carreras presenciales, puntajes referenciales IIS-2026, nivelación virtual vs 1er semestre, gratuidad/becas de acceso, residencias (NO hay residencias propias), extranjeros y homologación de ingreso.
 - Si preguntan algo ajeno a admisión (tesis, retiros regulares, prácticas, licitaciones), indícalo cordialmente y remite a Procesos Académicos o a oficina.admision@ikiam.edu.ec (Ext. 322 / WhatsApp 0982142499).
 - No uses fechas pasadas de 2024 ni II PA 2026; usa únicamente las fechas vigentes 1PA 2027 entregadas en el contexto.
@@ -1384,7 +1385,11 @@ def _ejecutar_consulta(session_id: str, pregunta: str, scope: str = "academico")
         partes_ctx.append("RED DE TRÁMITES Y CORREOS OFICIALES RELACIONADOS:\n" + "\n".join(
             f"- {r[1]} | Autoridad: {r[2]} | Correo: {r[3]} | Plazo: {r[4]} | Enlace: {r[5]}" for r in ctx["network"]
         ))
-    pide_doc = any(k in pregunta_norm.lower() for k in [
+    preg_low = pregunta_norm.lower()
+    es_cambio_explicito = any(k in preg_low for k in [
+        "cambio", "cambiar", "traslado", "transferencia", "homologar", "homologacion", "homologación", "convalidacion", "convalidación"
+    ])
+    pide_doc = any(k in preg_low for k in [
         "pdf", "documento", "resolucion", "reglamento", "ver", "visualizar", "enlace", "norma", "formato", "descargar", "formulario", "plantilla", "archivo"
     ])
     if ctx["docs"] and (pide_doc or es_cambio_explicito):
@@ -1438,6 +1443,7 @@ REGLAS DE RESPUESTA OBLIGATORIAS:
 - En correos electrónicos, escribe la dirección limpia directamente (ej. direccion.academica@ikiam.edu.ec). NUNCA generes enlaces markdown con mailto: como [correo](mailto:correo) ni agregues repeticiones de texto.
 - Si el usuario escribe únicamente el nombre de una carrera (ej. "biotecnología"), NO asumas que ya está matriculado ni vuelques autoridades. Responde en 2 o 3 líneas indicando su facultad y puntaje referencial (ej. 760 pts para Biotecnología), y pregunta con qué aspecto requiere orientación (requisitos de admisión o trámites académicos).
 - CONCISIÓN ESTRICTA: Redacta respuestas breves, ágiles y directas (máximo 2 a 3 párrafos cortos). Evita textos extensos tipo testamento que resulten ilegibles en mensajería móvil.
+- UBICACIÓN Y CÓMO LLEGAR: Si preguntan dónde queda Ikiam, ubicación, dirección o cómo llegar, responde indicando que el campus matriz queda en el Km 7 Vía a Muyuna, Parroquia Muyuna, Cantón Tena, Napo, Ecuador (modalidad 100% presencial). Incluye siempre el enlace directo a Google Maps: [Ver Ubicación en Google Maps](https://maps.google.com/?q=Universidad+Regional+Amazonica+Ikiam).
 - NUNCA respondas con evasivas como "vaya a secretaría" sin explicar primero requisitos, plazos, porcentajes, pasos exactos y correo destinatario.
 - Ikiam NO dispone actualmente de residencias estudiantiles; acláralo si consultan sobre vivienda.
 - Sobre asistencia (Art. 87 RRA): el mínimo obligatorio es 70%. Si el estudiante tiene menos (ej. 65%), explica el riesgo de reprobación por inasistencias, el plazo improrrogable de 3 días hábiles para justificar si media enfermedad/calamidad, o el retiro extraordinario por fuerza mayor antes de finales.
