@@ -2096,10 +2096,17 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
       <p>Dirección Académica y Trámites de Estudiantes</p>
     </div>
     <div style="display:flex; align-items:center; gap:6px;">
-      <a href="/admisiones" title="Ir a Chat de Admisiones Ikiam (1PA 2027)" style="background:rgba(255,255,255,0.16); color:#ffffff; text-decoration:none; border:1px solid rgba(255,255,255,0.35); border-radius:4px; padding:3px 7px; font-size:10px; font-weight:600;">Admisiones</a>
       <button type="button" onclick="reiniciarChatWidget()" title="Reiniciar conversación y borrar memoria" style="background:rgba(255,255,255,0.16); color:#ffffff; border:1px solid rgba(255,255,255,0.35); border-radius:4px; padding:3px 7px; font-size:10px; font-weight:600; cursor:pointer;">Nuevo chat</button>
       <span onclick="toggleAcademicoChat()" style="cursor:pointer; font-size:16px; line-height:1; margin-left:2px;">&times;</span>
     </div>
+  </div>
+  <div id="widget-scope-selector" style="display:flex; background:#073b24; padding:4px 6px; gap:4px; border-bottom:1px solid rgba(255,255,255,0.15);">
+    <button id="scope-tab-acad" type="button" onclick="cambiarAmbitoChat('academico')" style="flex:1; border:none; border-radius:4px; padding:6px 4px; font-size:11px; font-weight:700; cursor:pointer; background:#ffffff; color:#0d5f3a; transition:all 0.2s;">
+      Procesos Académicos
+    </button>
+    <button id="scope-tab-adm" type="button" onclick="cambiarAmbitoChat('admisiones')" style="flex:1; border:none; border-radius:4px; padding:6px 4px; font-size:11px; font-weight:700; cursor:pointer; background:transparent; color:#d1fae5; transition:all 0.2s;">
+      Admisiones (1PA 2027)
+    </button>
   </div>
   <div id="widget-academico-msgs">
     <div class="msg-item msg-bot" style="border-left: 3px solid #0d5f3a; padding: 10px 12px;">
@@ -2135,17 +2142,110 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
 </div>
 
 <script>
+  window.ambitoActual = 'academico';
+
+  var PLANTILLAS_BIENVENIDA = {
+    academico: {
+      titulo: 'Procesos Académicos — Ikiam',
+      subtitulo: 'Dirección Académica y Trámites de Estudiantes',
+      badge: 'Dirección Académica — Procesos Académicos',
+      placeholder: 'Consulte sobre cambio de carrera, cambio de IES, reingresos...',
+      saludo: '<strong>¡Hola! Te damos la bienvenida a Procesos Académicos.</strong> Orientación reglamentaria sobre cambio de carrera, cambio de IES, reingresos, matrículas y formatos oficiales de Ikiam.',
+      fuenteTexto: 'ikiam.edu.ec/procesos-academicos',
+      fuenteUrl: 'https://www.ikiam.edu.ec/index.php/procesos-academicos/',
+      chips: [
+        { cmd: "caso:cambio_carrera_interno", label: "Cambio de carrera interno" },
+        { cmd: "caso:ingreso_homologacion_externa", label: "Cambio de universidad (IES)" },
+        { cmd: "caso:ingreso_reingreso", label: "Solicitud de reingreso" },
+        { cmd: "¿Dónde descargo los formatos oficiales de solicitud de la Dirección Académica?", label: "Formatos descargables" },
+        { cmd: "caso:retiro_segunda_matricula", label: "Tercera matrícula y retiros" },
+        { cmd: "caso:justificacion_salud", label: "Justificar inasistencias" }
+      ]
+    },
+    admisiones: {
+      titulo: 'Admisiones Ikiam — 1PA 2027',
+      subtitulo: 'Asistente Exclusivo para Aspirantes y Postulantes',
+      badge: 'Oficina de Admisiones — Destino Ikiam 1PA 2027',
+      placeholder: 'Consulte sobre Registro Nacional, examen, carreras, cupos...',
+      saludo: '<strong>¡Hola! Te damos la bienvenida a Admisiones Ikiam.</strong> Orientación oficial para aspirantes sobre el periodo 1PA 2027: Registro Nacional SENESCYT, inscripciones, examen de admisión, oferta de carreras y cupos.',
+      fuenteTexto: 'ikiam.edu.ec/admisiones',
+      fuenteUrl: 'https://www.ikiam.edu.ec/index.php/admisiones/',
+      chips: [
+        { cmd: "Cronograma oficial del proceso 1PA 2027", label: "Cronograma 1PA 2027" },
+        { cmd: "Registro Nacional Senescyt fechas y pasos", label: "Registro Nacional" },
+        { cmd: "Inscripciones en eval.ikiam.edu.ec y simulador del examen", label: "Inscripción y simulador" },
+        { cmd: "Oferta de carreras y puntajes referenciales", label: "Carreras y puntajes" },
+        { cmd: "Costos, gratuidad y residencias en Ikiam", label: "Costos y gratuidad" },
+        { cmd: "Contacto oficial oficina de admisiones y teléfono", label: "Contacto Admisiones" }
+      ]
+    }
+  };
+
+  window.cambiarAmbitoChat = function(nuevoAmbito) {
+    window.ambitoActual = nuevoAmbito;
+    var cfg = PLANTILLAS_BIENVENIDA[nuevoAmbito];
+    if (!cfg) return;
+
+    var btnAcad = document.getElementById('scope-tab-acad');
+    var btnAdm = document.getElementById('scope-tab-adm');
+    if (btnAcad && btnAdm) {
+      if (nuevoAmbito === 'academico') {
+        btnAcad.style.background = '#ffffff';
+        btnAcad.style.color = '#0d5f3a';
+        btnAdm.style.background = 'transparent';
+        btnAdm.style.color = '#d1fae5';
+      } else {
+        btnAdm.style.background = '#ffffff';
+        btnAdm.style.color = '#0d5f3a';
+        btnAcad.style.background = 'transparent';
+        btnAcad.style.color = '#d1fae5';
+      }
+    }
+
+    var hTitle = document.querySelector('#widget-academico-header h4');
+    var hSub = document.querySelector('#widget-academico-header p');
+    if (hTitle) hTitle.innerText = cfg.titulo;
+    if (hSub) hSub.innerText = cfg.subtitulo;
+
+    var inp = document.getElementById('widget-academico-input');
+    if (inp) inp.placeholder = cfg.placeholder;
+
+    var msgs = document.getElementById('widget-academico-msgs');
+    var cDiv = document.createElement('div');
+    cDiv.className = 'msg-item msg-bot';
+    cDiv.style.borderLeft = '3px solid #0d5f3a';
+    cDiv.style.padding = '10px 12px';
+
+    var chipsHtml = cfg.chips.map(function(ch) {
+      var safeCmd = ch.cmd.replace(/'/g, "\\'");
+      var safeLbl = ch.label.replace(/'/g, "\\'");
+      return '<span class="chip-btn" onclick="seleccionarOpcionCaso(\'' + safeCmd + '\', \'' + safeLbl + '\')">' + ch.label + '</span>';
+    }).join(' ');
+
+    cDiv.innerHTML =
+      '<div style="display:inline-flex; align-items:center; gap:5px; background:#eef7f2; color:#0d5f3a; font-weight:700; font-size:10.5px; padding:2px 8px; border-radius:10px; margin-bottom:6px;">' +
+        '<span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#22c55e;"></span>' +
+        cfg.badge +
+      '</div>' +
+      '<p style="font-size:12px; margin:0 0 5px; color:#1e293b; line-height:1.45;">' + cfg.saludo + '</p>' +
+      '<p style="font-size:11px; color:#64748b; margin:0 0 8px;">' +
+        'Fuente oficial: <a href="' + cfg.fuenteUrl + '" target="_blank" style="color:#0d5f3a; text-decoration:underline;">' + cfg.fuenteTexto + '</a>' +
+      '</p>' +
+      '<div style="display:flex; flex-wrap:wrap; gap:5px;">' + chipsHtml + '</div>';
+
+    msgs.appendChild(cDiv);
+    msgs.scrollTop = msgs.scrollHeight;
+    if (inp) inp.focus();
+  };
+
   function toggleAcademicoChat() {
     var win = document.getElementById('widget-academico-window');
     win.style.display = (win.style.display === 'flex') ? 'none' : 'flex';
     if (win.style.display === 'flex') {
+      var msgs = document.getElementById('widget-academico-msgs');
+      msgs.scrollTop = msgs.scrollHeight;
       document.getElementById('widget-academico-input').focus();
     }
-  }
-
-  function preguntaRapida(txt) {
-    document.getElementById('widget-academico-input').value = txt;
-    enviarConsultaAcademica();
   }
 
   function _obtenerClientIdPersistente() {
@@ -2171,12 +2271,13 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
   window.reiniciarChatWidget = async function() {
     var msgs = document.getElementById('widget-academico-msgs');
     var sidAnterior = _obtenerSidAcademico();
-    msgs.innerHTML = '<div class="msg-item msg-bot"><span style="color:#0d5f3a; font-size:12px;">Reiniciando sesión y borrando memoria...</span></div>';
+    var scp = window.ambitoActual || 'academico';
+    msgs.innerHTML = '<div class="msg-item msg-bot"><span style="color:#0d5f3a; font-size:12px;">Reiniciando conversación y borrando memoria...</span></div>';
     try {
       var res = await fetch(window.location.origin + '/api/chat', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ message: 'reiniciar', sessionId: sidAnterior, clientId: _obtenerClientIdPersistente(), scope: 'academico' })
+        body: JSON.stringify({ message: 'reiniciar', sessionId: sidAnterior, clientId: _obtenerClientIdPersistente(), scope: scp })
       });
       var data = await res.json();
       _nuevoSidAcademico();
@@ -2189,7 +2290,7 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
       msgs.appendChild(bDiv);
     } catch(err) {
       _nuevoSidAcademico();
-      msgs.innerHTML = '<div class="msg-item msg-bot">Conversación reiniciada localmente. Escribe tu consulta o selecciona una ruta.</div>';
+      msgs.innerHTML = '<div class="msg-item msg-bot">Conversación reiniciada. Puede formular una nueva consulta.</div>';
     }
     msgs.scrollTop = msgs.scrollHeight;
   };
@@ -2204,7 +2305,9 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
 
     var bDiv = document.createElement('div');
     bDiv.className = 'msg-item msg-bot';
-    bDiv.innerHTML = '<span style="color:#0d5f3a; font-size:12px;">Cargando requisitos oficiales y contactos...</span>';
+    var scp = window.ambitoActual || 'academico';
+    var txtCarga = (scp === 'admisiones') ? 'Consultando Admisiones Ikiam...' : 'Cargando información de Dirección Académica...';
+    bDiv.innerHTML = '<span style="color:#0d5f3a; font-size:12px;">' + txtCarga + '</span>';
     msgs.appendChild(bDiv);
     msgs.scrollTop = msgs.scrollHeight;
 
@@ -2214,10 +2317,10 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
       var res = await fetch(endpoint, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ message: codigoCaso, sessionId: sid, clientId: _obtenerClientIdPersistente(), scope: 'academico' })
+        body: JSON.stringify({ message: codigoCaso, sessionId: sid, clientId: _obtenerClientIdPersistente(), scope: scp })
       });
       var data = await res.json();
-      var reply = data.reply ? data.reply : 'No se pudo cargar la información del trámite seleccionado.';
+      var reply = data.reply ? data.reply : 'No se pudo cargar la información seleccionada.';
       reply = reply.replace(/href=(['"])\/documentos\//g, 'href=$1' + window.location.origin + '/documentos/');
       if (data.reset) {
         _nuevoSidAcademico();
@@ -2226,7 +2329,7 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
       }
       bDiv.innerHTML = reply;
     } catch(err) {
-      bDiv.innerText = 'Error de conexión con el servicio académico.';
+      bDiv.innerText = 'Error de conexión con el servicio.';
     }
     msgs.scrollTop = msgs.scrollHeight;
   };
@@ -2244,9 +2347,11 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
     input.value = '';
     msgs.scrollTop = msgs.scrollHeight;
 
+    var scp = window.ambitoActual || 'academico';
     var bDiv = document.createElement('div');
     bDiv.className = 'msg-item msg-bot';
-    bDiv.innerHTML = '<span style="color:#0d5f3a; font-size:12px;">Consultando Dirección Académica...</span>';
+    var txtCarga = (scp === 'admisiones') ? 'Consultando Admisiones Ikiam...' : 'Consultando Dirección Académica...';
+    bDiv.innerHTML = '<span style="color:#0d5f3a; font-size:12px;">' + txtCarga + '</span>';
     msgs.appendChild(bDiv);
     msgs.scrollTop = msgs.scrollHeight;
 
@@ -2256,11 +2361,10 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
       var res = await fetch(endpoint, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ message: texto, sessionId: sid, clientId: _obtenerClientIdPersistente(), scope: 'academico' })
+        body: JSON.stringify({ message: texto, sessionId: sid, clientId: _obtenerClientIdPersistente(), scope: scp })
       });
       var data = await res.json();
       var reply = data.reply ? data.reply : 'Disculpe, no se pudo procesar la consulta en este momento.';
-      // Resolver enlaces de /documentos/ con el origen actual absoluto para neutralizar la etiqueta <base href>
       reply = reply.replace(/href=(['"])\/documentos\//g, 'href=$1' + window.location.origin + '/documentos/');
       if (data.reset) {
         _nuevoSidAcademico();
@@ -2269,7 +2373,7 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
       }
       bDiv.innerHTML = reply;
     } catch(err) {
-      bDiv.innerText = 'Error de conexión con el servicio académico.';
+      bDiv.innerText = 'Error de conexión con el servicio.';
     }
     msgs.scrollTop = msgs.scrollHeight;
   }
